@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  # Lexora Backend Service
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lexora-api
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongo:27017/lexora
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID:-us-east-1_XXXXXXXXX}
+      - COGNITO_APP_CLIENT_ID=${COGNITO_APP_CLIENT_ID:-xxxxxxxxxxxxxxxxxxxxxxxxxx}
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+      - LOG_LEVEL=debug
+    depends_on:
+      mongo:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - lexora-network
+
+  # MongoDB Database Service
+  mongo:
+    image: mongo:7.0-noble
+    container_name: lexora-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - lexora-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+
+networks:
+  lexora-network:
+    driver: bridge
+
+volumes:
+  mongodb_data:
+    driver: local
