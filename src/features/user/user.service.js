@@ -1,7 +1,7 @@
-import User from './user.model.js';
-import ApiError from '../../utils/ApiError.js';
-import { ERROR_MESSAGES, PAGINATION, ROLES } from '../../utils/constants.js';
-import logger from '../../utils/logger.js';
+import User from "./user.model.js";
+import ApiError from "../../utils/ApiError.js";
+import { ERROR_MESSAGES, PAGINATION, ROLES } from "../../utils/constants.js";
+import logger from "../../utils/logger.js";
 
 /**
  * User Service — handles local user profile CRUD operations.
@@ -18,7 +18,13 @@ class UserService {
    * @param {string} [params.search] - Search by name or email
    * @returns {{ users, total, page, limit, totalPages }}
    */
-  async listUsers({ page = PAGINATION.DEFAULT_PAGE, limit = PAGINATION.DEFAULT_LIMIT, role, isActive, search } = {}) {
+  async listUsers({
+    page = PAGINATION.DEFAULT_PAGE,
+    limit = PAGINATION.DEFAULT_LIMIT,
+    role,
+    isActive,
+    search,
+  } = {}) {
     const query = {};
 
     if (role) {
@@ -29,9 +35,9 @@ class UserService {
     }
     if (search) {
       query.$or = [
-        { firstName: { $regex: search, $options: 'i' } },
-        { lastName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
+        { firstName: { $regex: search, $options: "i" } },
+        { lastName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -40,7 +46,7 @@ class UserService {
 
     const [users, total] = await Promise.all([
       User.find(query)
-        .select('-__v')
+        .select("-__v")
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(safeLimit)
@@ -64,7 +70,7 @@ class UserService {
    * @returns {object} User document
    */
   async getUserById(userId) {
-    const user = await User.findById(userId).select('-__v').lean();
+    const user = await User.findById(userId).select("-__v").lean();
 
     if (!user) {
       throw ApiError.notFound(ERROR_MESSAGES.USER_NOT_FOUND);
@@ -82,7 +88,7 @@ class UserService {
    */
   async updateUser(userId, updateData) {
     // Only allow specific fields to be updated
-    const allowedFields = ['firstName', 'lastName', 'bio', 'avatar'];
+    const allowedFields = ["firstName", "lastName", "bio", "avatar"];
     const sanitized = {};
     for (const field of allowedFields) {
       if (updateData[field] !== undefined) {
@@ -93,9 +99,9 @@ class UserService {
     const user = await User.findByIdAndUpdate(
       userId,
       { $set: sanitized },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     )
-      .select('-__v')
+      .select("-__v")
       .lean();
 
     if (!user) {
@@ -116,7 +122,7 @@ class UserService {
     const user = await User.findByIdAndUpdate(
       userId,
       { isActive: false },
-      { new: true }
+      { new: true },
     );
 
     if (!user) {
@@ -124,7 +130,7 @@ class UserService {
     }
 
     logger.info(`User deactivated: ${user.email}`);
-    return { message: 'User deactivated successfully' };
+    return { message: "User deactivated successfully" };
   }
 
   /**
@@ -136,15 +142,17 @@ class UserService {
    */
   async changeRole(userId, newRole) {
     if (!Object.values(ROLES).includes(newRole)) {
-      throw ApiError.badRequest(`Invalid role. Must be one of: ${Object.values(ROLES).join(', ')}`);
+      throw ApiError.badRequest(
+        `Invalid role. Must be one of: ${Object.values(ROLES).join(", ")}`,
+      );
     }
 
     const user = await User.findByIdAndUpdate(
       userId,
       { role: newRole },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     )
-      .select('-__v')
+      .select("-__v")
       .lean();
 
     if (!user) {

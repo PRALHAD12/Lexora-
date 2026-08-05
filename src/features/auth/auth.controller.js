@@ -1,6 +1,6 @@
-import authService from './auth.service.js';
-import ApiResponse from '../../utils/ApiResponse.js';
-import asyncHandler from '../../utils/asyncHandler.js';
+import authService from "./auth.service.js";
+import ApiResponse from "../../utils/ApiResponse.js";
+import asyncHandler from "../../utils/asyncHandler.js";
 
 /**
  * POST /api/v1/auth/register
@@ -8,7 +8,12 @@ import asyncHandler from '../../utils/asyncHandler.js';
  */
 export const register = asyncHandler(async (req, res) => {
   const { email, password, firstName, lastName } = req.body;
-  const result = await authService.signUp({ email, password, firstName, lastName });
+  const result = await authService.signUp({
+    email,
+    password,
+    firstName,
+    lastName,
+  });
   return ApiResponse.created(res, result.message, {
     userSub: result.userSub,
     isConfirmed: result.isConfirmed,
@@ -42,7 +47,7 @@ export const login = asyncHandler(async (req, res) => {
     });
   }
 
-  return ApiResponse.ok(res, 'Login successful', {
+  return ApiResponse.ok(res, "Login successful", {
     accessToken: result.accessToken,
     idToken: result.idToken,
     refreshToken: result.refreshToken,
@@ -59,7 +64,7 @@ export const login = asyncHandler(async (req, res) => {
 export const refreshToken = asyncHandler(async (req, res) => {
   const { refreshToken: token } = req.body;
   const result = await authService.refreshToken({ refreshToken: token });
-  return ApiResponse.ok(res, 'Token refreshed successfully', result);
+  return ApiResponse.ok(res, "Token refreshed successfully", result);
 });
 
 /**
@@ -78,7 +83,11 @@ export const forgotPassword = asyncHandler(async (req, res) => {
  */
 export const resetPassword = asyncHandler(async (req, res) => {
   const { email, code, newPassword } = req.body;
-  const result = await authService.confirmForgotPassword({ email, code, newPassword });
+  const result = await authService.confirmForgotPassword({
+    email,
+    code,
+    newPassword,
+  });
   return ApiResponse.ok(res, result.message);
 });
 
@@ -88,7 +97,7 @@ export const resetPassword = asyncHandler(async (req, res) => {
  */
 export const changePassword = asyncHandler(async (req, res) => {
   const { previousPassword, proposedPassword } = req.body;
-  const accessToken = req.headers.authorization.split(' ')[1];
+  const accessToken = req.headers.authorization.split(" ")[1];
   const result = await authService.changePassword({
     accessToken,
     previousPassword,
@@ -102,7 +111,7 @@ export const changePassword = asyncHandler(async (req, res) => {
  * Global sign out (invalidates all tokens).
  */
 export const logout = asyncHandler(async (req, res) => {
-  const accessToken = req.headers.authorization.split(' ')[1];
+  const accessToken = req.headers.authorization.split(" ")[1];
   const result = await authService.globalSignOut({ accessToken });
   return ApiResponse.ok(res, result.message);
 });
@@ -112,12 +121,12 @@ export const logout = asyncHandler(async (req, res) => {
  * Get current user profile.
  */
 export const getMe = asyncHandler(async (req, res) => {
-  const accessToken = req.headers.authorization.split(' ')[1];
+  const accessToken = req.headers.authorization.split(" ")[1];
   const profile = await authService.getProfile({
     accessToken,
     sub: req.user.sub,
   });
-  return ApiResponse.ok(res, 'User profile retrieved', profile);
+  return ApiResponse.ok(res, "User profile retrieved", profile);
 });
 
 /**
