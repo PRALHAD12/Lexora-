@@ -30,6 +30,9 @@ jobs:
       - name: Install Dependencies
         run: npm ci
 
+      - name: Check Code Formatting (Prettier)
+        run: npx prettier --check "src/**/*.js" "tests/**/*.js"
+
       - name: Run ESLint
         run: npm run lint
 
@@ -41,6 +44,21 @@ jobs:
           COGNITO_USER_POOL_ID: us-east-1_TestPoolId
           COGNITO_APP_CLIENT_ID: test-client-id-123456
         run: npm test
+
+      - name: Generate Code Coverage Report
+        env:
+          NODE_ENV: test
+          MONGODB_URI_TEST: mongodb://localhost:27017/lexora_test
+          AWS_REGION: us-east-1
+          COGNITO_USER_POOL_ID: us-east-1_TestPoolId
+          COGNITO_APP_CLIENT_ID: test-client-id-123456
+        run: npm run test:coverage
+
+      - name: Upload Code Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-coverage-report
+          path: coverage/
 
   docker-build-check:
     name: Verify Docker Build
