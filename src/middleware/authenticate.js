@@ -1,8 +1,8 @@
-import { accessTokenVerifier } from '../config/aws.js';
-import ApiError from '../utils/ApiError.js';
-import { ERROR_MESSAGES } from '../utils/constants.js';
-import logger from '../utils/logger.js';
-import User from '../features/user/user.model.js';
+import { accessTokenVerifier } from "../config/aws.js";
+import ApiError from "../utils/ApiError.js";
+import { ERROR_MESSAGES } from "../utils/constants.js";
+import logger from "../utils/logger.js";
+import User from "../features/user/user.model.js";
 
 /**
  * Authentication middleware.
@@ -16,11 +16,11 @@ const authenticate = async (req, _res, next) => {
     // 1. Extract token from Authorization header
     const authHeader = req.headers.authorization;
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
       throw ApiError.unauthorized(ERROR_MESSAGES.TOKEN_MISSING);
     }
 
-    const token = authHeader.split(' ')[1];
+    const token = authHeader.split(" ")[1];
 
     if (!token) {
       throw ApiError.unauthorized(ERROR_MESSAGES.TOKEN_MISSING);
@@ -31,7 +31,7 @@ const authenticate = async (req, _res, next) => {
     try {
       payload = await accessTokenVerifier.verify(token);
     } catch (verifyError) {
-      logger.warn('JWT verification failed:', {
+      logger.warn("JWT verification failed:", {
         error: verifyError.message,
         ip: req.ip,
       });
@@ -45,12 +45,12 @@ const authenticate = async (req, _res, next) => {
     req.user = {
       sub: payload.sub,
       email: payload.email || localUser?.email,
-      cognitoGroups: payload['cognito:groups'] || [],
+      cognitoGroups: payload["cognito:groups"] || [],
       tokenUse: payload.token_use,
       scope: payload.scope,
       // Local DB fields
       id: localUser?._id?.toString(),
-      role: localUser?.role || 'user',
+      role: localUser?.role || "user",
       firstName: localUser?.firstName,
       lastName: localUser?.lastName,
       isActive: localUser?.isActive ?? true,
@@ -58,7 +58,7 @@ const authenticate = async (req, _res, next) => {
 
     // 5. Check if user account is active
     if (localUser && !localUser.isActive) {
-      throw ApiError.forbidden('Your account has been deactivated');
+      throw ApiError.forbidden("Your account has been deactivated");
     }
 
     next();

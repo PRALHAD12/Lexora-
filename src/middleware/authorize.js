@@ -1,5 +1,5 @@
-import ApiError from '../utils/ApiError.js';
-import { ERROR_MESSAGES } from '../utils/constants.js';
+import ApiError from "../utils/ApiError.js";
+import { ERROR_MESSAGES } from "../utils/constants.js";
 
 /**
  * Role-Based Access Control (RBAC) middleware factory.
@@ -28,14 +28,14 @@ const authorize = (...allowedRoles) => {
 
     // Also check Cognito groups (groups are often used for roles in Cognito)
     const hasGroup = cognitoGroups.some((group) =>
-      allowedRoles.includes(group.toLowerCase())
+      allowedRoles.includes(group.toLowerCase()),
     );
 
     if (!hasRole && !hasGroup) {
       return next(
         ApiError.forbidden(
-          `${ERROR_MESSAGES.INSUFFICIENT_ROLE}. Required: ${allowedRoles.join(' or ')}`
-        )
+          `${ERROR_MESSAGES.INSUFFICIENT_ROLE}. Required: ${allowedRoles.join(" or ")}`,
+        ),
       );
     }
 

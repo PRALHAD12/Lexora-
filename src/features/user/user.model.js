@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import { ROLES } from '../../utils/constants.js';
+import mongoose from "mongoose";
+import { ROLES } from "../../utils/constants.js";
 
 const userSchema = new mongoose.Schema(
   {
@@ -46,7 +46,7 @@ const userSchema = new mongoose.Schema(
     bio: {
       type: String,
       maxlength: 500,
-      default: '',
+      default: "",
     },
     isActive: {
       type: Boolean,
@@ -79,12 +79,12 @@ const userSchema = new mongoose.Schema(
       },
     },
     toObject: { virtuals: true },
-  }
+  },
 );
 
 // ─── Virtuals ─────────────────────────────────────────────────────
 
-userSchema.virtual('fullName').get(function () {
+userSchema.virtual("fullName").get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
@@ -109,6 +109,6 @@ userSchema.statics.findByEmail = function (email) {
   return this.findOne({ email: email.toLowerCase() });
 };
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 export default User;

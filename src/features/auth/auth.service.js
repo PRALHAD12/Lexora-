@@ -9,14 +9,14 @@ import {
   GetUserCommand,
   ResendConfirmationCodeCommand,
   AdminGetUserCommand,
-} from '@aws-sdk/client-cognito-identity-provider';
+} from "@aws-sdk/client-cognito-identity-provider";
 
-import { cognitoClient } from '../../config/aws.js';
-import config from '../../config/index.js';
-import User from '../user/user.model.js';
-import ApiError from '../../utils/ApiError.js';
-import { AUTH_FLOWS, ERROR_MESSAGES } from '../../utils/constants.js';
-import logger from '../../utils/logger.js';
+import { cognitoClient } from "../../config/aws.js";
+import config from "../../config/index.js";
+import User from "../user/user.model.js";
+import ApiError from "../../utils/ApiError.js";
+import { AUTH_FLOWS, ERROR_MESSAGES } from "../../utils/constants.js";
+import logger from "../../utils/logger.js";
 
 const { userPoolId, clientId } = config.aws.cognito;
 
@@ -48,9 +48,9 @@ class AuthService {
       Username: email,
       Password: password,
       UserAttributes: [
-        { Name: 'email', Value: email },
-        { Name: 'given_name', Value: firstName },
-        { Name: 'family_name', Value: lastName },
+        { Name: "email", Value: email },
+        { Name: "given_name", Value: firstName },
+        { Name: "family_name", Value: lastName },
       ],
     });
 
@@ -70,7 +70,8 @@ class AuthService {
     return {
       userSub: response.UserSub,
       isConfirmed: response.UserConfirmed,
-      message: 'Registration successful. Please check your email for a verification code.',
+      message:
+        "Registration successful. Please check your email for a verification code.",
     };
   }
 
@@ -92,14 +93,11 @@ class AuthService {
     await cognitoClient.send(command);
 
     // Update local profile
-    await User.findOneAndUpdate(
-      { email },
-      { isEmailVerified: true }
-    );
+    await User.findOneAndUpdate({ email }, { isEmailVerified: true });
 
     logger.info(`Email verified: ${email}`);
 
-    return { message: 'Email verified successfully. You can now sign in.' };
+    return { message: "Email verified successfully. You can now sign in." };
   }
 
   /**
@@ -130,7 +128,7 @@ class AuthService {
         challengeName: response.ChallengeName,
         session: response.Session,
         challengeParameters: response.ChallengeParameters,
-        message: 'Additional authentication step required',
+        message: "Additional authentication step required",
       };
     }
 
@@ -147,12 +145,12 @@ class AuthService {
       tokenType: AuthenticationResult.TokenType,
       user: localUser
         ? {
-          id: localUser._id,
-          email: localUser.email,
-          firstName: localUser.firstName,
-          lastName: localUser.lastName,
-          role: localUser.role,
-        }
+            id: localUser._id,
+            email: localUser.email,
+            firstName: localUser.firstName,
+            lastName: localUser.lastName,
+            role: localUser.role,
+          }
         : null,
     };
   }
@@ -202,7 +200,8 @@ class AuthService {
     logger.info(`Password reset initiated: ${email}`);
 
     return {
-      message: 'If an account with that email exists, a password reset code has been sent.',
+      message:
+        "If an account with that email exists, a password reset code has been sent.",
     };
   }
 
@@ -227,7 +226,10 @@ class AuthService {
 
     logger.info(`Password reset confirmed: ${email}`);
 
-    return { message: 'Password has been reset successfully. You can now sign in with your new password.' };
+    return {
+      message:
+        "Password has been reset successfully. You can now sign in with your new password.",
+    };
   }
 
   /**
@@ -248,9 +250,9 @@ class AuthService {
 
     await cognitoClient.send(command);
 
-    logger.info('Password changed successfully');
+    logger.info("Password changed successfully");
 
-    return { message: 'Password changed successfully.' };
+    return { message: "Password changed successfully." };
   }
 
   /**
@@ -267,9 +269,9 @@ class AuthService {
 
     await cognitoClient.send(command);
 
-    logger.info('User signed out globally');
+    logger.info("User signed out globally");
 
-    return { message: 'Signed out successfully from all devices.' };
+    return { message: "Signed out successfully from all devices." };
   }
 
   /**
@@ -300,10 +302,10 @@ class AuthService {
     return {
       sub: attributes.sub,
       email: attributes.email,
-      emailVerified: attributes.email_verified === 'true',
+      emailVerified: attributes.email_verified === "true",
       firstName: attributes.given_name || localUser?.firstName,
       lastName: attributes.family_name || localUser?.lastName,
-      role: localUser?.role || 'user',
+      role: localUser?.role || "user",
       avatar: localUser?.avatar,
       isActive: localUser?.isActive,
       createdAt: localUser?.createdAt,
@@ -328,7 +330,7 @@ class AuthService {
 
     logger.info(`Verification code resent: ${email}`);
 
-    return { message: 'Verification code has been resent to your email.' };
+    return { message: "Verification code has been resent to your email." };
   }
 
   /**
