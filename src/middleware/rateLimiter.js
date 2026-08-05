@@ -1,6 +1,6 @@
-import rateLimit from 'express-rate-limit';
-import config from '../config/index.js';
-import { ERROR_MESSAGES } from '../utils/constants.js';
+import rateLimit from "express-rate-limit";
+import config from "../config/index.js";
+import { ERROR_MESSAGES } from "../utils/constants.js";
 
 /**
  * General-purpose rate limiter for all API routes.
@@ -13,7 +13,7 @@ export const generalLimiter = rateLimit({
     message: ERROR_MESSAGES.RATE_LIMITED,
   },
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
-  legacyHeaders: false,  // Disable `X-RateLimit-*` headers
+  legacyHeaders: false, // Disable `X-RateLimit-*` headers
 });
 
 /**

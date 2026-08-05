@@ -1,6 +1,6 @@
-import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
-import { CognitoJwtVerifier } from 'aws-jwt-verify';
-import config from './index.js';
+import { CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoJwtVerifier } from "aws-jwt-verify";
+import config from "./index.js";
 
 /**
  * AWS Cognito Identity Provider client (Admin SDK).
@@ -16,7 +16,7 @@ export const cognitoClient = new CognitoIdentityProviderClient({
  */
 export const accessTokenVerifier = CognitoJwtVerifier.create({
   userPoolId: config.aws.cognito.userPoolId,
-  tokenUse: 'access',
+  tokenUse: "access",
   clientId: config.aws.cognito.clientId,
 });
 
@@ -26,7 +26,7 @@ export const accessTokenVerifier = CognitoJwtVerifier.create({
  */
 export const idTokenVerifier = CognitoJwtVerifier.create({
   userPoolId: config.aws.cognito.userPoolId,
-  tokenUse: 'id',
+  tokenUse: "id",
   clientId: config.aws.cognito.clientId,
 });
 

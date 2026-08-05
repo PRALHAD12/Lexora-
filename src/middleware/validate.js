@@ -1,6 +1,6 @@
-import { validationResult } from 'express-validator';
-import ApiError from '../utils/ApiError.js';
-import { ERROR_MESSAGES } from '../utils/constants.js';
+import { validationResult } from "express-validator";
+import ApiError from "../utils/ApiError.js";
+import { ERROR_MESSAGES } from "../utils/constants.js";
 
 /**
  * Generic validation middleware.

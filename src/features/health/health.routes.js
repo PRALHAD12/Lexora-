@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import { getHealth } from './health.controller.js';
+import { Router } from "express";
+import { getHealth } from "./health.controller.js";
 
 const router = Router();
 
@@ -8,6 +8,6 @@ const router = Router();
  * @desc    Server health check
  * @access  Public
  */
-router.get('/', getHealth);
+router.get("/", getHealth);
 
 export default router;

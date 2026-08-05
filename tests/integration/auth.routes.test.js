@@ -1,11 +1,11 @@
-import { jest, describe, it, expect } from '@jest/globals';
-import request from 'supertest';
+import { jest, describe, it, expect } from "@jest/globals";
+import request from "supertest";
 
 // Mock AWS services before importing app
 const mockSend = jest.fn();
 const mockVerify = jest.fn();
 
-jest.unstable_mockModule('@aws-sdk/client-cognito-identity-provider', () => ({
+jest.unstable_mockModule("@aws-sdk/client-cognito-identity-provider", () => ({
   CognitoIdentityProviderClient: jest.fn(() => ({ send: mockSend })),
   SignUpCommand: jest.fn((p) => p),
   ConfirmSignUpCommand: jest.fn((p) => p),
@@ -19,7 +19,7 @@ jest.unstable_mockModule('@aws-sdk/client-cognito-identity-provider', () => ({
   AdminGetUserCommand: jest.fn((p) => p),
 }));
 
-jest.unstable_mockModule('aws-jwt-verify', () => ({
+jest.unstable_mockModule("aws-jwt-verify", () => ({
   CognitoJwtVerifier: {
     create: jest.fn(() => ({
       verify: mockVerify,
@@ -28,7 +28,7 @@ jest.unstable_mockModule('aws-jwt-verify', () => ({
 }));
 
 // Mock mongoose to avoid needing a real DB
-jest.unstable_mockModule('mongoose', () => {
+jest.unstable_mockModule("mongoose", () => {
   const mockSchema = jest.fn().mockImplementation(() => ({
     virtual: jest.fn().mockReturnValue({ get: jest.fn() }),
     index: jest.fn(),
@@ -54,7 +54,7 @@ jest.unstable_mockModule('mongoose', () => {
       disconnect: jest.fn().mockResolvedValue(true),
       connection: {
         readyState: 1,
-        host: 'localhost',
+        host: "localhost",
         on: jest.fn(),
       },
     },
@@ -64,125 +64,109 @@ jest.unstable_mockModule('mongoose', () => {
     disconnect: jest.fn(),
     connection: {
       readyState: 1,
-      host: 'localhost',
+      host: "localhost",
       on: jest.fn(),
     },
   };
 });
 
-const { default: app } = await import('../../src/app.js');
+const { default: app } = await import("../../src/app.js");
 
-describe('Auth Routes — Integration Tests', () => {
-  describe('POST /api/v1/auth/register', () => {
-    it('should return 400 if email is missing', async () => {
-      const res = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          password: 'Test@1234',
-          firstName: 'John',
-          lastName: 'Doe',
-        });
+describe("Auth Routes — Integration Tests", () => {
+  describe("POST /api/v1/auth/register", () => {
+    it("should return 400 if email is missing", async () => {
+      const res = await request(app).post("/api/v1/auth/register").send({
+        password: "Test@1234",
+        firstName: "John",
+        lastName: "Doe",
+      });
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
     });
 
-    it('should return 400 if password is too weak', async () => {
-      const res = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'test@example.com',
-          password: '123',
-          firstName: 'John',
-          lastName: 'Doe',
-        });
+    it("should return 400 if password is too weak", async () => {
+      const res = await request(app).post("/api/v1/auth/register").send({
+        email: "test@example.com",
+        password: "123",
+        firstName: "John",
+        lastName: "Doe",
+      });
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
     });
 
-    it('should return 400 if firstName is missing', async () => {
-      const res = await request(app)
-        .post('/api/v1/auth/register')
-        .send({
-          email: 'test@example.com',
-          password: 'Test@1234',
-          lastName: 'Doe',
-        });
+    it("should return 400 if firstName is missing", async () => {
+      const res = await request(app).post("/api/v1/auth/register").send({
+        email: "test@example.com",
+        password: "Test@1234",
+        lastName: "Doe",
+      });
 
       expect(res.status).toBe(400);
     });
   });
 
-  describe('POST /api/v1/auth/login', () => {
-    it('should return 400 if email is invalid', async () => {
-      const res = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: 'not-an-email',
-          password: 'Test@1234',
-        });
+  describe("POST /api/v1/auth/login", () => {
+    it("should return 400 if email is invalid", async () => {
+      const res = await request(app).post("/api/v1/auth/login").send({
+        email: "not-an-email",
+        password: "Test@1234",
+      });
 
       expect(res.status).toBe(400);
     });
 
-    it('should return 400 if password is missing', async () => {
-      const res = await request(app)
-        .post('/api/v1/auth/login')
-        .send({
-          email: 'test@example.com',
-        });
+    it("should return 400 if password is missing", async () => {
+      const res = await request(app).post("/api/v1/auth/login").send({
+        email: "test@example.com",
+      });
 
       expect(res.status).toBe(400);
     });
   });
 
-  describe('POST /api/v1/auth/verify-email', () => {
-    it('should return 400 if code is not 6 digits', async () => {
-      const res = await request(app)
-        .post('/api/v1/auth/verify-email')
-        .send({
-          email: 'test@example.com',
-          code: '12',
-        });
+  describe("POST /api/v1/auth/verify-email", () => {
+    it("should return 400 if code is not 6 digits", async () => {
+      const res = await request(app).post("/api/v1/auth/verify-email").send({
+        email: "test@example.com",
+        code: "12",
+      });
 
       expect(res.status).toBe(400);
     });
   });
 
-  describe('GET /api/v1/auth/me', () => {
-    it('should return 401 if no token is provided', async () => {
-      const res = await request(app)
-        .get('/api/v1/auth/me');
+  describe("GET /api/v1/auth/me", () => {
+    it("should return 401 if no token is provided", async () => {
+      const res = await request(app).get("/api/v1/auth/me");
 
       expect(res.status).toBe(401);
     });
   });
 
-  describe('POST /api/v1/auth/logout', () => {
-    it('should return 401 if no token is provided', async () => {
-      const res = await request(app)
-        .post('/api/v1/auth/logout');
+  describe("POST /api/v1/auth/logout", () => {
+    it("should return 401 if no token is provided", async () => {
+      const res = await request(app).post("/api/v1/auth/logout");
 
       expect(res.status).toBe(401);
     });
   });
 
-  describe('GET /api/v1/health', () => {
-    it('should return 200 and health data', async () => {
-      const res = await request(app)
-        .get('/api/v1/health');
+  describe("GET /api/v1/health", () => {
+    it("should return 200 and health data", async () => {
+      const res = await request(app).get("/api/v1/health");
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data.status).toBe('healthy');
+      expect(res.body.data.status).toBe("healthy");
     });
   });
 
-  describe('404 Handler', () => {
-    it('should return 404 for unknown routes', async () => {
-      const res = await request(app)
-        .get('/api/v1/nonexistent');
+  describe("404 Handler", () => {
+    it("should return 404 for unknown routes", async () => {
+      const res = await request(app).get("/api/v1/nonexistent");
 
       expect(res.status).toBe(404);
       expect(res.body.success).toBe(false);

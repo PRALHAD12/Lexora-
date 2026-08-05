@@ -1,16 +1,16 @@
-import { Router } from 'express';
-import * as userController from './user.controller.js';
+import { Router } from "express";
+import * as userController from "./user.controller.js";
 import {
   getUserByIdValidation,
   updateUserValidation,
   deleteUserValidation,
   changeRoleValidation,
   listUsersValidation,
-} from './user.validation.js';
-import validate from '../../middleware/validate.js';
-import authenticate from '../../middleware/authenticate.js';
-import authorize from '../../middleware/authorize.js';
-import { ROLES } from '../../utils/constants.js';
+} from "./user.validation.js";
+import validate from "../../middleware/validate.js";
+import authenticate from "../../middleware/authenticate.js";
+import authorize from "../../middleware/authorize.js";
+import { ROLES } from "../../utils/constants.js";
 
 const router = Router();
 
@@ -23,11 +23,11 @@ router.use(authenticate);
  * @access  Admin only
  */
 router.get(
-  '/',
+  "/",
   authorize(ROLES.ADMIN),
   listUsersValidation,
   validate,
-  userController.listUsers
+  userController.listUsers,
 );
 
 /**
@@ -35,24 +35,14 @@ router.get(
  * @desc    Get a single user by ID
  * @access  Admin or Self
  */
-router.get(
-  '/:id',
-  getUserByIdValidation,
-  validate,
-  userController.getUserById
-);
+router.get("/:id", getUserByIdValidation, validate, userController.getUserById);
 
 /**
  * @route   PATCH /api/v1/users/:id
  * @desc    Update user profile
  * @access  Admin or Self
  */
-router.patch(
-  '/:id',
-  updateUserValidation,
-  validate,
-  userController.updateUser
-);
+router.patch("/:id", updateUserValidation, validate, userController.updateUser);
 
 /**
  * @route   DELETE /api/v1/users/:id
@@ -60,11 +50,11 @@ router.patch(
  * @access  Admin only
  */
 router.delete(
-  '/:id',
+  "/:id",
   authorize(ROLES.ADMIN),
   deleteUserValidation,
   validate,
-  userController.deleteUser
+  userController.deleteUser,
 );
 
 /**
@@ -73,11 +63,11 @@ router.delete(
  * @access  Admin only
  */
 router.patch(
-  '/:id/role',
+  "/:id/role",
   authorize(ROLES.ADMIN),
   changeRoleValidation,
   validate,
-  userController.changeRole
+  userController.changeRole,
 );
 
 export default router;

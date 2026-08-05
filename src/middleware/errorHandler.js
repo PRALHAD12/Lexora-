@@ -1,21 +1,31 @@
-import ApiError from '../utils/ApiError.js';
-import logger from '../utils/logger.js';
-import config from '../config/index.js';
+import ApiError from "../utils/ApiError.js";
+import logger from "../utils/logger.js";
+import config from "../config/index.js";
 
 /**
  * Maps known AWS Cognito error names to user-friendly ApiError responses.
  */
 const cognitoErrorMap = {
-  UserNotFoundException: (msg) => ApiError.notFound(msg || 'User not found'),
-  UsernameExistsException: (msg) => ApiError.conflict(msg || 'A user with this email already exists'),
-  NotAuthorizedException: (msg) => ApiError.unauthorized(msg || 'Invalid credentials'),
-  UserNotConfirmedException: (msg) => ApiError.forbidden(msg || 'Email address has not been verified'),
-  CodeMismatchException: (msg) => ApiError.badRequest(msg || 'Invalid verification code'),
-  ExpiredCodeException: (msg) => ApiError.badRequest(msg || 'Verification code has expired'),
-  InvalidPasswordException: (msg) => ApiError.badRequest(msg || 'Password does not meet requirements'),
-  LimitExceededException: (msg) => ApiError.tooManyRequests(msg || 'Too many attempts, please try again later'),
+  UserNotFoundException: (msg) => ApiError.notFound(msg || "User not found"),
+  UsernameExistsException: (msg) =>
+    ApiError.conflict(msg || "A user with this email already exists"),
+  NotAuthorizedException: (msg) =>
+    ApiError.unauthorized(msg || "Invalid credentials"),
+  UserNotConfirmedException: (msg) =>
+    ApiError.forbidden(msg || "Email address has not been verified"),
+  CodeMismatchException: (msg) =>
+    ApiError.badRequest(msg || "Invalid verification code"),
+  ExpiredCodeException: (msg) =>
+    ApiError.badRequest(msg || "Verification code has expired"),
+  InvalidPasswordException: (msg) =>
+    ApiError.badRequest(msg || "Password does not meet requirements"),
+  LimitExceededException: (msg) =>
+    ApiError.tooManyRequests(
+      msg || "Too many attempts, please try again later",
+    ),
   TooManyRequestsException: () => ApiError.tooManyRequests(),
-  InvalidParameterException: (msg) => ApiError.badRequest(msg || 'Invalid parameter'),
+  InvalidParameterException: (msg) =>
+    ApiError.badRequest(msg || "Invalid parameter"),
 };
 
 /**
@@ -46,20 +56,20 @@ const errorHandler = (err, _req, res, _next) => {
   }
 
   // 3. Handle Mongoose validation errors
-  if (err.name === 'ValidationError') {
+  if (err.name === "ValidationError") {
     const errors = Object.values(err.errors).map((e) => ({
       field: e.path,
       message: e.message,
     }));
     return res.status(400).json({
       success: false,
-      message: 'Validation failed',
+      message: "Validation failed",
       errors,
     });
   }
 
   // 4. Handle Mongoose cast errors (invalid ObjectId)
-  if (err.name === 'CastError') {
+  if (err.name === "CastError") {
     return res.status(400).json({
       success: false,
       message: `Invalid ${err.path}: ${err.value}`,
@@ -76,7 +86,7 @@ const errorHandler = (err, _req, res, _next) => {
   }
 
   // 6. Handle CORS errors
-  if (err.message && err.message.includes('not allowed by CORS')) {
+  if (err.message && err.message.includes("not allowed by CORS")) {
     return res.status(403).json({
       success: false,
       message: err.message,
@@ -84,12 +94,12 @@ const errorHandler = (err, _req, res, _next) => {
   }
 
   // 7. Unexpected / programming errors
-  logger.error('Unhandled error:', err);
+  logger.error("Unhandled error:", err);
 
   return res.status(500).json({
     success: false,
     message: config.app.isProduction
-      ? 'An unexpected error occurred'
+      ? "An unexpected error occurred"
       : err.message,
     ...(config.app.isProduction ? {} : { stack: err.stack }),
   });

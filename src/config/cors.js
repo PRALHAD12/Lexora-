@@ -1,4 +1,4 @@
-import config from './index.js';
+import config from "./index.js";
 
 /**
  * CORS configuration with whitelisted origins from environment.
@@ -22,9 +22,9 @@ const corsOptions = {
     return callback(new Error(`Origin ${origin} not allowed by CORS`));
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  exposedHeaders: ['X-Total-Count', 'X-Page', 'X-Limit'],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  exposedHeaders: ["X-Total-Count", "X-Page", "X-Limit"],
   maxAge: 86400, // 24 hours
 };
 

@@ -1,6 +1,6 @@
-import mongoose from 'mongoose';
-import logger from '../utils/logger.js';
-import config from './index.js';
+import mongoose from "mongoose";
+import logger from "../utils/logger.js";
+import config from "./index.js";
 
 /**
  * Connect to MongoDB with retry logic and event logging.
@@ -16,21 +16,21 @@ export async function connectDatabase() {
     await mongoose.connect(config.db.uri, options);
     logger.info(`MongoDB connected: ${mongoose.connection.host}`);
   } catch (error) {
-    logger.error('MongoDB connection failed:', error);
+    logger.error("MongoDB connection failed:", error);
     process.exit(1);
   }
 
   // Connection event handlers
-  mongoose.connection.on('error', (err) => {
-    logger.error('MongoDB connection error:', err);
+  mongoose.connection.on("error", (err) => {
+    logger.error("MongoDB connection error:", err);
   });
 
-  mongoose.connection.on('disconnected', () => {
-    logger.warn('MongoDB disconnected');
+  mongoose.connection.on("disconnected", () => {
+    logger.warn("MongoDB disconnected");
   });
 
-  mongoose.connection.on('reconnected', () => {
-    logger.info('MongoDB reconnected');
+  mongoose.connection.on("reconnected", () => {
+    logger.info("MongoDB reconnected");
   });
 }
 
@@ -40,9 +40,9 @@ export async function connectDatabase() {
 export async function disconnectDatabase() {
   try {
     await mongoose.disconnect();
-    logger.info('MongoDB disconnected gracefully');
+    logger.info("MongoDB disconnected gracefully");
   } catch (error) {
-    logger.error('Error disconnecting MongoDB:', error);
+    logger.error("Error disconnecting MongoDB:", error);
   }
 }
 
