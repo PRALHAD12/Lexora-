@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { CognitoIdentityProviderClient } from "@aws-sdk/client-cognito-identity-provider";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
 import config from "./index.js";
@@ -9,6 +10,19 @@ import config from "./index.js";
 export const cognitoClient = new CognitoIdentityProviderClient({
   region: config.aws.region,
 });
+
+/**
+ * Calculates HMAC-SHA256 Secret Hash for Cognito API calls if client secret is configured.
+ */
+export function calculateSecretHash(username) {
+  const secret = config.aws.cognito.clientSecret;
+  if (!secret) return undefined;
+  const clientId = config.aws.cognito.clientId;
+  return crypto
+    .createHmac("sha256", secret)
+    .update(username + clientId)
+    .digest("base64");
+}
 
 /**
  * Cognito JWT Verifier for Access tokens.
@@ -32,6 +46,8 @@ export const idTokenVerifier = CognitoJwtVerifier.create({
 
 export default {
   cognitoClient,
+  calculateSecretHash,
   accessTokenVerifier,
   idTokenVerifier,
 };
+

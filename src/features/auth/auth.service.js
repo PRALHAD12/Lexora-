@@ -11,7 +11,7 @@ import {
   AdminGetUserCommand,
 } from "@aws-sdk/client-cognito-identity-provider";
 
-import { cognitoClient } from "../../config/aws.js";
+import { cognitoClient, calculateSecretHash } from "../../config/aws.js";
 import config from "../../config/index.js";
 import User from "../user/user.model.js";
 import ApiError from "../../utils/ApiError.js";
@@ -43,10 +43,12 @@ class AuthService {
     }
 
     // 2. Register in Cognito
+    const secretHash = calculateSecretHash(email);
     const command = new SignUpCommand({
       ClientId: clientId,
       Username: email,
       Password: password,
+      ...(secretHash && { SecretHash: secretHash }),
       UserAttributes: [
         { Name: "email", Value: email },
         { Name: "given_name", Value: firstName },
@@ -84,10 +86,12 @@ class AuthService {
    * @returns {object} { message }
    */
   async confirmSignUp({ email, code }) {
+    const secretHash = calculateSecretHash(email);
     const command = new ConfirmSignUpCommand({
       ClientId: clientId,
       Username: email,
       ConfirmationCode: code,
+      ...(secretHash && { SecretHash: secretHash }),
     });
 
     await cognitoClient.send(command);
@@ -110,12 +114,14 @@ class AuthService {
    * @returns {object} { accessToken, idToken, refreshToken, expiresIn, user }
    */
   async signIn({ email, password }) {
+    const secretHash = calculateSecretHash(email);
     const command = new InitiateAuthCommand({
       AuthFlow: AUTH_FLOWS.USER_PASSWORD,
       ClientId: clientId,
       AuthParameters: {
         USERNAME: email,
         PASSWORD: password,
+        ...(secretHash && { SECRET_HASH: secretHash }),
       },
     });
 
@@ -190,9 +196,11 @@ class AuthService {
    * @returns {object} { message }
    */
   async forgotPassword({ email }) {
+    const secretHash = calculateSecretHash(email);
     const command = new ForgotPasswordCommand({
       ClientId: clientId,
       Username: email,
+      ...(secretHash && { SecretHash: secretHash }),
     });
 
     await cognitoClient.send(command);
@@ -215,11 +223,13 @@ class AuthService {
    * @returns {object} { message }
    */
   async confirmForgotPassword({ email, code, newPassword }) {
+    const secretHash = calculateSecretHash(email);
     const command = new ConfirmForgotPasswordCommand({
       ClientId: clientId,
       Username: email,
       ConfirmationCode: code,
       Password: newPassword,
+      ...(secretHash && { SecretHash: secretHash }),
     });
 
     await cognitoClient.send(command);
@@ -321,9 +331,11 @@ class AuthService {
    * @returns {object} { message }
    */
   async resendVerificationCode({ email }) {
+    const secretHash = calculateSecretHash(email);
     const command = new ResendConfirmationCodeCommand({
       ClientId: clientId,
       Username: email,
+      ...(secretHash && { SecretHash: secretHash }),
     });
 
     await cognitoClient.send(command);
