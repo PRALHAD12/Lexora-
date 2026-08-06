@@ -13,6 +13,9 @@ import ApiError from "./utils/ApiError.js";
 import healthRoutes from "./features/health/health.routes.js";
 import authRoutes from "./features/auth/auth.routes.js";
 import userRoutes from "./features/user/user.routes.js";
+import organizationRoutes from "./features/organization/organization.routes.js";
+import documentRoutes from "./features/document/document.routes.js";
+import storageRoutes from "./features/storage/storage.routes.js";
 
 const app = express();
 
@@ -43,6 +46,9 @@ const API_PREFIX = "/api/v1";
 app.use(`${API_PREFIX}/health`, healthRoutes);
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/users`, userRoutes);
+app.use(`${API_PREFIX}/organizations`, organizationRoutes);
+app.use(`${API_PREFIX}/documents`, documentRoutes);
+app.use(`${API_PREFIX}/storage`, storageRoutes);
 
 // ─── Root Route ───────────────────────────────────────────────────
 app.get("/", (_req, res) => {

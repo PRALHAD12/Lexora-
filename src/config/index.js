@@ -30,6 +30,9 @@ const config = {
       clientId: process.env.COGNITO_APP_CLIENT_ID,
       clientSecret: process.env.COGNITO_APP_CLIENT_SECRET || null,
     },
+    s3: {
+      bucket: process.env.S3_BUCKET_NAME || "lexora-documents",
+    },
   },
 
   cors: {
