@@ -16,7 +16,9 @@ export const cognitoClient = new CognitoIdentityProviderClient({
  */
 export function calculateSecretHash(username) {
   const secret = config.aws.cognito.clientSecret;
-  if (!secret) return undefined;
+  if (!secret) {
+    return undefined;
+  }
   const clientId = config.aws.cognito.clientId;
   return crypto
     .createHmac("sha256", secret)
