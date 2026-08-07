@@ -11,6 +11,7 @@ export const getDashboardStats = asyncHandler(async (req, res) => {
   const userId = req.user?.sub || req.user?.id || "demo-user-123";
 
   return ApiResponse.ok(res, "Dashboard stats retrieved successfully", {
+    userId,
     totalAudited: 142,
     highRiskCount: 18,
     complianceScore: 94,
