@@ -13,6 +13,7 @@ import ApiError from "./utils/ApiError.js";
 import healthRoutes from "./features/health/health.routes.js";
 import authRoutes from "./features/auth/auth.routes.js";
 import userRoutes from "./features/user/user.routes.js";
+import aiRoutes from "./features/ai/ai.routes.js";
 
 const app = express();
 
@@ -43,6 +44,7 @@ const API_PREFIX = "/api/v1";
 app.use(`${API_PREFIX}/health`, healthRoutes);
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/users`, userRoutes);
+app.use(`${API_PREFIX}/ai`, aiRoutes);
 
 // ─── Root Route ───────────────────────────────────────────────────
 app.get("/", (_req, res) => {
