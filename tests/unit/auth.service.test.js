@@ -54,6 +54,7 @@ jest.unstable_mockModule("../../src/config/aws.js", () => ({
   cognitoClient: { send: mockSend },
   accessTokenVerifier: { verify: jest.fn() },
   idTokenVerifier: { verify: jest.fn() },
+  calculateSecretHash: jest.fn(),
 }));
 
 // Dynamic imports after mocks
