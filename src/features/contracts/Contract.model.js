@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const contractSchema = new mongoose.Schema(
   {
@@ -14,8 +14,8 @@ const contractSchema = new mongoose.Schema(
     },
     fileType: {
       type: String,
-      enum: ['PDF', 'DOCX', 'TXT', 'UNKNOWN'],
-      default: 'PDF',
+      enum: ["PDF", "DOCX", "TXT", "UNKNOWN"],
+      default: "PDF",
     },
     fileSize: {
       type: Number,
@@ -23,12 +23,12 @@ const contractSchema = new mongoose.Schema(
     },
     extractedText: {
       type: String,
-      default: '',
+      default: "",
     },
     riskRating: {
       type: String,
-      enum: ['High', 'Medium', 'Low', 'Compliant'],
-      default: 'Compliant',
+      enum: ["High", "Medium", "Low", "Compliant"],
+      default: "Compliant",
     },
     flaggedRisksCount: {
       type: Number,
@@ -36,16 +36,16 @@ const contractSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      default: 'Verified',
+      default: "Verified",
     },
     aiAnalysis: {
       type: String,
-      default: '',
+      default: "",
     },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-export const Contract = mongoose.model('Contract', contractSchema);
+export const Contract = mongoose.model("Contract", contractSchema);

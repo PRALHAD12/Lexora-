@@ -1,5 +1,5 @@
-import { GoogleGenAI } from '@google/genai';
-import logger from '../../utils/logger.js';
+import { GoogleGenAI } from "@google/genai";
+import logger from "../../utils/logger.js";
 
 /**
  * Stream legal AI content using Gemini 2.5 Flash API or Fallback Legal Engine
@@ -11,11 +11,11 @@ export async function streamLegalAIResponse(prompt, onChunk) {
 
   if (apiKey) {
     try {
-      logger.info('Calling Gemini 2.5 API for legal analysis stream');
+      logger.info("Calling Gemini 2.5 API for legal analysis stream");
       const ai = new GoogleGenAI({ apiKey });
 
       const responseStream = await ai.models.generateContentStream({
-        model: 'gemini-2.5-flash',
+        model: "gemini-2.5-flash",
         contents: prompt,
         config: {
           systemInstruction: `You are Lexora AI, an elite legal intelligence assistant and corporate general counsel AI.
@@ -31,17 +31,23 @@ Use clear Markdown formatting with bullet points, risk badges (e.g. 🔴 HIGH RI
       }
       return;
     } catch (err) {
-      logger.warn(`Gemini API call encountered an error (${err.message}). Falling back to internal legal intelligence engine.`);
+      logger.warn(
+        `Gemini API call encountered an error (${err.message}). Falling back to internal legal intelligence engine.`,
+      );
     }
   }
 
   // High-performance Legal Intelligence Fallback Engine
-  logger.info('Executing Lexora Legal Analysis Engine (Fallback)');
-  
-  const lowerPrompt = prompt.toLowerCase();
-  let analysisOutput = '';
+  logger.info("Executing Lexora Legal Analysis Engine (Fallback)");
 
-  if (lowerPrompt.includes('nda') || lowerPrompt.includes('indemnity') || lowerPrompt.includes('non-disclosure')) {
+  const lowerPrompt = prompt.toLowerCase();
+  let analysisOutput = "";
+
+  if (
+    lowerPrompt.includes("nda") ||
+    lowerPrompt.includes("indemnity") ||
+    lowerPrompt.includes("non-disclosure")
+  ) {
     analysisOutput = `### ⚖️ Lexora AI — Non-Disclosure Agreement (NDA) Risk Assessment
 
 #### 📋 Executive Overview
@@ -72,7 +78,11 @@ This analysis evaluates your NDA parameters for non-standard terms, uncapped lia
 
 ---
 *Lexora AI Legal Engine • SOC2 Type II Aligned • Audit ID: #LX-${Math.floor(100000 + Math.random() * 900000)}*`;
-  } else if (lowerPrompt.includes('draft') || lowerPrompt.includes('msa') || lowerPrompt.includes('agreement')) {
+  } else if (
+    lowerPrompt.includes("draft") ||
+    lowerPrompt.includes("msa") ||
+    lowerPrompt.includes("agreement")
+  ) {
     analysisOutput = `### 📄 Lexora AI — B2B Master Services Agreement (MSA) Draft
 
 **THIS MASTER SERVICES AGREEMENT** ("Agreement") is entered into as of this day by and between **Provider** and **Client**.
@@ -116,9 +126,9 @@ Thank you for your legal query regarding: **"${prompt.slice(0, 80)}..."**
   }
 
   // Stream fallback text in smooth human-like token chunks
-  const words = analysisOutput.split(' ');
+  const words = analysisOutput.split(" ");
   for (let i = 0; i < words.length; i += 3) {
-    const chunk = words.slice(i, i + 3).join(' ') + ' ';
+    const chunk = words.slice(i, i + 3).join(" ") + " ";
     onChunk(chunk);
     await new Promise((r) => setTimeout(r, 25));
   }

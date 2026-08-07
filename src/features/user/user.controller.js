@@ -8,7 +8,7 @@ import ApiError from "../../utils/ApiError.js";
  * Returns live real-time user metrics & risk scores.
  */
 export const getDashboardStats = asyncHandler(async (req, res) => {
-  const userId = req.user?.sub || req.user?.id || 'demo-user-123';
+  const userId = req.user?.sub || req.user?.id || "demo-user-123";
 
   return ApiResponse.ok(res, "Dashboard stats retrieved successfully", {
     totalAudited: 142,
