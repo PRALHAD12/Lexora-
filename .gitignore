@@ -26,3 +26,7 @@ Thumbs.db
 # Build
 dist/
 build/
+
+# Redis dump
+dump.rdb
+
