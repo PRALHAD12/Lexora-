@@ -1,6 +1,7 @@
 import { Contract } from "./Contract.model.js";
 import { parseDocumentText } from "../../utils/documentParser.util.js";
 import logger from "../../utils/logger.js";
+import { cacheGet, cacheSet, cacheDel } from "../../utils/cacheService.util.js";
 
 /**
  * Handle multipart document upload, text parsing, and MongoDB persistence
@@ -66,6 +67,10 @@ export const uploadAndParseContract = async (req, res, next) => {
       aiAnalysis: `Contract ${originalname} parsed successfully. Identified ${flaggedRisksCount} potential risk areas.`,
     });
 
+    // Invalidate Redis caches for history & stats
+    await cacheDel(`contracts:history:${userId}`);
+    await cacheDel(`dashboard:stats:${userId}`);
+
     logger.info(
       `Contract ${originalname} uploaded and parsed for user ${userId}`,
     );
@@ -82,11 +87,23 @@ export const uploadAndParseContract = async (req, res, next) => {
 };
 
 /**
- * Fetch recent audit history threads for logged-in user
+ * Fetch recent audit history threads for logged-in user (Cached in Redis for 120s)
  */
 export const getAuditHistory = async (req, res, next) => {
   try {
     const userId = req.user?.sub || req.user?.id || "demo-user-123";
+    const cacheKey = `contracts:history:${userId}`;
+
+    // Check Redis Cache
+    const cachedHistory = await cacheGet(cacheKey);
+    if (cachedHistory) {
+      return res.status(200).json({
+        success: true,
+        count: cachedHistory.length,
+        data: cachedHistory,
+        fromCache: true,
+      });
+    }
 
     const contracts = await Contract.find({ userId })
       .sort({ createdAt: -1 })
@@ -94,6 +111,9 @@ export const getAuditHistory = async (req, res, next) => {
       .select(
         "fileName fileType riskRating flaggedRisksCount status createdAt",
       );
+
+    // Cache in Redis for 120 seconds
+    await cacheSet(cacheKey, contracts, 120);
 
     res.status(200).json({
       success: true,
@@ -137,7 +157,13 @@ export const getContractById = async (req, res, next) => {
 export const deleteContract = async (req, res, next) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.sub || req.user?.id || "demo-user-123";
+
     await Contract.findByIdAndDelete(id);
+
+    // Invalidate Redis caches
+    await cacheDel(`contracts:history:${userId}`);
+    await cacheDel(`dashboard:stats:${userId}`);
 
     res.status(200).json({
       success: true,
