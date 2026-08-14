@@ -2,41 +2,6 @@ import userService from "./user.service.js";
 import ApiResponse from "../../utils/ApiResponse.js";
 import asyncHandler from "../../utils/asyncHandler.js";
 import ApiError from "../../utils/ApiError.js";
-import { cacheGet, cacheSet } from "../../utils/cacheService.util.js";
-
-/**
- * GET /api/v1/users/me/dashboard-stats
- * Returns live real-time user metrics & risk scores (Cached in Redis for 300s).
- */
-export const getDashboardStats = asyncHandler(async (req, res) => {
-  const userId = req.user?.sub || req.user?.id || "demo-user-123";
-  const cacheKey = `dashboard:stats:${userId}`;
-
-  // Check Redis Cache
-  const cachedStats = await cacheGet(cacheKey);
-  if (cachedStats) {
-    return ApiResponse.ok(
-      res,
-      "Dashboard stats retrieved from cache",
-      cachedStats,
-    );
-  }
-
-  const stats = {
-    userId,
-    totalAudited: 142,
-    highRiskCount: 18,
-    complianceScore: 94,
-    avgReviewSpeed: "4.2 min",
-    activeModel: "Gemini 2.5 Flash Engine",
-    lastAuditDate: new Date(),
-  };
-
-  // Cache in Redis for 300 seconds
-  await cacheSet(cacheKey, stats, 300);
-
-  return ApiResponse.ok(res, "Dashboard stats retrieved successfully", stats);
-});
 
 /**
  * GET /api/v1/users
@@ -114,7 +79,6 @@ export const changeRole = asyncHandler(async (req, res) => {
 });
 
 export default {
-  getDashboardStats,
   listUsers,
   getUserById,
   updateUser,

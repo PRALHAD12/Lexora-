@@ -67,9 +67,11 @@ export const uploadAndParseContract = async (req, res, next) => {
       aiAnalysis: `Contract ${originalname} parsed successfully. Identified ${flaggedRisksCount} potential risk areas.`,
     });
 
-    // Invalidate Redis caches for history & stats
+    // Cache newly uploaded contract in Redis for 3600s
+    await cacheSet(`contract:${contract._id}`, contract, 3600);
+
+    // Invalidate Redis cache for history
     await cacheDel(`contracts:history:${userId}`);
-    await cacheDel(`dashboard:stats:${userId}`);
 
     logger.info(
       `Contract ${originalname} uploaded and parsed for user ${userId}`,
@@ -161,9 +163,8 @@ export const deleteContract = async (req, res, next) => {
 
     await Contract.findByIdAndDelete(id);
 
-    // Invalidate Redis caches
+    // Invalidate Redis cache
     await cacheDel(`contracts:history:${userId}`);
-    await cacheDel(`dashboard:stats:${userId}`);
 
     res.status(200).json({
       success: true,
