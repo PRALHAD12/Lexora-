@@ -1,5 +1,6 @@
 import Organization from "./Organization.model.js";
 import Project from "./Project.model.js";
+import User from "../user/user.model.js";
 import ApiResponse from "../../utils/ApiResponse.js";
 import ApiError from "../../utils/ApiError.js";
 import asyncHandler from "../../utils/asyncHandler.js";
@@ -53,6 +54,7 @@ export const getMyOrganizations = asyncHandler(async (req, res) => {
     $or: [{ owner: userId }, { "members.userId": userId }],
     isActive: true,
   })
+    .populate("members.userId", "firstName lastName email avatar role")
     .sort({ createdAt: -1 })
     .lean();
 
@@ -79,7 +81,7 @@ export const getMyOrganizations = asyncHandler(async (req, res) => {
 
 /**
  * PUT /api/v1/organizations/:id
- * Update an organization (owner only).
+ * Update an organization (owner or admin).
  */
 export const updateOrganization = asyncHandler(async (req, res) => {
   const userId = req.user?.id || req.user?.sub;
@@ -91,8 +93,15 @@ export const updateOrganization = asyncHandler(async (req, res) => {
     throw ApiError.notFound("Organization not found");
   }
 
-  if (organization.owner.toString() !== userId) {
-    throw ApiError.forbidden("Only the organization owner can update it");
+  const isOwner = organization.owner.toString() === userId;
+  const isAdmin = organization.members.some(
+    (m) => m.userId.toString() === userId && m.role === "admin",
+  );
+
+  if (!isOwner && !isAdmin) {
+    throw ApiError.forbidden(
+      "Only the organization owner or admin can update it",
+    );
   }
 
   if (name) {
@@ -110,6 +119,226 @@ export const updateOrganization = asyncHandler(async (req, res) => {
   logger.info(`Organization updated: ${organization.name} by user ${userId}`);
 
   return ApiResponse.ok(res, "Organization updated successfully", organization);
+});
+
+/**
+ * DELETE /api/v1/organizations/:id
+ * Delete an organization and its associated projects (owner only).
+ */
+export const deleteOrganization = asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.sub;
+  const { id } = req.params;
+
+  const organization = await Organization.findById(id);
+  if (!organization) {
+    throw ApiError.notFound("Organization not found");
+  }
+
+  if (organization.owner.toString() !== userId) {
+    throw ApiError.forbidden("Only the organization owner can delete it");
+  }
+
+  // Delete all projects under this organization
+  await Project.deleteMany({ organizationId: id });
+
+  // Delete the organization
+  await Organization.findByIdAndDelete(id);
+
+  logger.info(`Organization deleted: ${organization.name} by user ${userId}`);
+
+  return ApiResponse.ok(
+    res,
+    "Organization and associated projects deleted successfully",
+  );
+});
+
+// ═══════════════════════════════════════════════════════════════════
+//  MEMBER MANAGEMENT CONTROLLERS
+// ═══════════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/v1/organizations/:id/members
+ * Get all members of an organization.
+ */
+export const getMembers = asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.sub;
+  const { id } = req.params;
+
+  const organization = await Organization.findById(id).populate(
+    "members.userId",
+    "firstName lastName email avatar role",
+  );
+
+  if (!organization) {
+    throw ApiError.notFound("Organization not found");
+  }
+
+  const isMember =
+    organization.owner.toString() === userId ||
+    organization.members.some(
+      (m) => m.userId && m.userId._id.toString() === userId,
+    );
+
+  if (!isMember) {
+    throw ApiError.forbidden("You are not a member of this organization");
+  }
+
+  return ApiResponse.ok(
+    res,
+    "Members retrieved successfully",
+    organization.members,
+  );
+});
+
+/**
+ * POST /api/v1/organizations/:id/members
+ * Invite / add a member to the organization by email.
+ */
+export const inviteMember = asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.sub;
+  const { id } = req.params;
+  const { email, role = "viewer" } = req.body;
+
+  const organization = await Organization.findById(id);
+  if (!organization) {
+    throw ApiError.notFound("Organization not found");
+  }
+
+  const isOwner = organization.owner.toString() === userId;
+  const isAdmin = organization.members.some(
+    (m) => m.userId.toString() === userId && m.role === "admin",
+  );
+
+  if (!isOwner && !isAdmin) {
+    throw ApiError.forbidden(
+      "Only the organization owner or admin can invite members",
+    );
+  }
+
+  // Find user by email
+  const userToInvite = await User.findOne({ email: email.toLowerCase() });
+  if (!userToInvite) {
+    throw ApiError.notFound(
+      `No registered user found with email "${email}". Please ensure they have created a Lexora account first.`,
+    );
+  }
+
+  // Check if already a member
+  const existingMember = organization.members.find(
+    (m) => m.userId.toString() === userToInvite._id.toString(),
+  );
+
+  if (existingMember) {
+    throw ApiError.conflict(
+      `User "${email}" is already a member with role "${existingMember.role}".`,
+    );
+  }
+
+  organization.members.push({
+    userId: userToInvite._id,
+    role,
+    joinedAt: new Date(),
+  });
+
+  await organization.save();
+
+  const updatedOrg = await Organization.findById(id).populate(
+    "members.userId",
+    "firstName lastName email avatar role",
+  );
+
+  logger.info(
+    `User ${email} added to org ${organization.name} with role ${role}`,
+  );
+
+  return ApiResponse.ok(
+    res,
+    `User ${email} successfully added as ${role}`,
+    updatedOrg.members,
+  );
+});
+
+/**
+ * DELETE /api/v1/organizations/:id/members/:memberId
+ * Remove a member from the organization.
+ */
+export const removeMember = asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.sub;
+  const { id, memberId } = req.params;
+
+  const organization = await Organization.findById(id);
+  if (!organization) {
+    throw ApiError.notFound("Organization not found");
+  }
+
+  const isOwner = organization.owner.toString() === userId;
+  const isAdmin = organization.members.some(
+    (m) => m.userId.toString() === userId && m.role === "admin",
+  );
+
+  if (!isOwner && !isAdmin) {
+    throw ApiError.forbidden(
+      "Only the organization owner or admin can remove members",
+    );
+  }
+
+  // Cannot remove owner
+  if (organization.owner.toString() === memberId) {
+    throw ApiError.forbidden("Cannot remove the organization owner");
+  }
+
+  organization.members = organization.members.filter(
+    (m) => m._id.toString() !== memberId && m.userId.toString() !== memberId,
+  );
+
+  await organization.save();
+
+  logger.info(`Member ${memberId} removed from org ${organization.name}`);
+
+  return ApiResponse.ok(res, "Member removed successfully");
+});
+
+/**
+ * PATCH /api/v1/organizations/:id/members/:memberId
+ * Update a member's role.
+ */
+export const updateMemberRole = asyncHandler(async (req, res) => {
+  const userId = req.user?.id || req.user?.sub;
+  const { id, memberId } = req.params;
+  const { role } = req.body;
+
+  const organization = await Organization.findById(id);
+  if (!organization) {
+    throw ApiError.notFound("Organization not found");
+  }
+
+  const isOwner = organization.owner.toString() === userId;
+  const isAdmin = organization.members.some(
+    (m) => m.userId.toString() === userId && m.role === "admin",
+  );
+
+  if (!isOwner && !isAdmin) {
+    throw ApiError.forbidden(
+      "Only the organization owner or admin can update member roles",
+    );
+  }
+
+  const member = organization.members.find(
+    (m) => m._id.toString() === memberId || m.userId.toString() === memberId,
+  );
+
+  if (!member) {
+    throw ApiError.notFound("Member not found in organization");
+  }
+
+  member.role = role;
+  await organization.save();
+
+  logger.info(
+    `Member ${memberId} role updated to ${role} in org ${organization.name}`,
+  );
+
+  return ApiResponse.ok(res, "Member role updated successfully", member);
 });
 
 // ═══════════════════════════════════════════════════════════════════
@@ -276,6 +505,11 @@ export default {
   createOrganization,
   getMyOrganizations,
   updateOrganization,
+  deleteOrganization,
+  getMembers,
+  inviteMember,
+  removeMember,
+  updateMemberRole,
   createProject,
   getProjects,
   updateProject,

@@ -40,6 +40,41 @@ export const updateOrganizationValidation = [
     .withMessage("Industry must be at most 100 characters"),
 ];
 
+export const deleteOrganizationValidation = [
+  param("id").isMongoId().withMessage("Invalid organization ID"),
+];
+
+// ─── Member Validations ───────────────────────────────────────────
+
+export const inviteMemberValidation = [
+  param("id").isMongoId().withMessage("Invalid organization ID"),
+  body("email")
+    .trim()
+    .notEmpty()
+    .withMessage("Email address is required")
+    .isEmail()
+    .withMessage("Please enter a valid email address"),
+  body("role")
+    .optional()
+    .isIn(["admin", "editor", "viewer"])
+    .withMessage("Role must be admin, editor, or viewer"),
+];
+
+export const removeMemberValidation = [
+  param("id").isMongoId().withMessage("Invalid organization ID"),
+  param("memberId").isMongoId().withMessage("Invalid member ID"),
+];
+
+export const updateMemberRoleValidation = [
+  param("id").isMongoId().withMessage("Invalid organization ID"),
+  param("memberId").isMongoId().withMessage("Invalid member ID"),
+  body("role")
+    .notEmpty()
+    .withMessage("Role is required")
+    .isIn(["admin", "editor", "viewer"])
+    .withMessage("Role must be admin, editor, or viewer"),
+];
+
 // ─── Project Validations ──────────────────────────────────────────
 
 export const createProjectValidation = [
