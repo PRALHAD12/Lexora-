@@ -67,6 +67,9 @@ export const uploadAndParseContract = async (req, res, next) => {
       aiAnalysis: `Contract ${originalname} parsed successfully. Identified ${flaggedRisksCount} potential risk areas.`,
     });
 
+    // Cache newly uploaded contract in Redis for 3600s
+    await cacheSet(`contract:${contract._id}`, contract, 3600);
+
     // Invalidate Redis caches for history & stats
     await cacheDel(`contracts:history:${userId}`);
     await cacheDel(`dashboard:stats:${userId}`);
