@@ -14,6 +14,8 @@ import {
 import { cognitoClient, calculateSecretHash } from "../../config/aws.js";
 import config from "../../config/index.js";
 import User from "../user/user.model.js";
+import Organization from "../organization/Organization.model.js";
+import Project from "../organization/Project.model.js";
 import ApiError from "../../utils/ApiError.js";
 import { AUTH_FLOWS, ERROR_MESSAGES } from "../../utils/constants.js";
 import logger from "../../utils/logger.js";
@@ -141,6 +143,30 @@ class AuthService {
     // Fetch local user profile
     const localUser = await User.findOne({ email }).lean();
 
+    // Fetch organization & projects for user
+    let organization = null;
+    let projects = [];
+    if (localUser) {
+      try {
+        organization = await Organization.findOne({
+          $or: [{ owner: localUser._id }, { "members.userId": localUser._id }],
+          isActive: true,
+        }).lean();
+
+        if (organization) {
+          projects = await Project.find({
+            organizationId: organization._id,
+          })
+            .sort({ createdAt: -1 })
+            .lean();
+        }
+      } catch {
+        // Gracefully handle invalid ObjectId in test/dev environments
+        organization = null;
+        projects = [];
+      }
+    }
+
     logger.info(`User signed in: ${email}`);
 
     return {
@@ -158,6 +184,22 @@ class AuthService {
             role: localUser.role,
           }
         : null,
+      organization: organization
+        ? {
+            id: organization._id,
+            name: organization.name,
+            slug: organization.slug,
+            description: organization.description,
+            industry: organization.industry,
+          }
+        : null,
+      projects: projects.map((p) => ({
+        id: p._id,
+        name: p.name,
+        description: p.description,
+        status: p.status,
+        color: p.color,
+      })),
     };
   }
 
@@ -309,6 +351,30 @@ class AuthService {
     // Fetch local DB profile
     const localUser = await User.findOne({ cognitoSub: sub }).lean();
 
+    // Fetch organization & projects
+    let organization = null;
+    let projects = [];
+    if (localUser) {
+      try {
+        organization = await Organization.findOne({
+          $or: [{ owner: localUser._id }, { "members.userId": localUser._id }],
+          isActive: true,
+        }).lean();
+
+        if (organization) {
+          projects = await Project.find({
+            organizationId: organization._id,
+          })
+            .sort({ createdAt: -1 })
+            .lean();
+        }
+      } catch {
+        // Gracefully handle invalid ObjectId in test/dev environments
+        organization = null;
+        projects = [];
+      }
+    }
+
     return {
       sub: attributes.sub,
       email: attributes.email,
@@ -320,6 +386,22 @@ class AuthService {
       isActive: localUser?.isActive,
       createdAt: localUser?.createdAt,
       updatedAt: localUser?.updatedAt,
+      organization: organization
+        ? {
+            id: organization._id,
+            name: organization.name,
+            slug: organization.slug,
+            description: organization.description,
+            industry: organization.industry,
+          }
+        : null,
+      projects: projects.map((p) => ({
+        id: p._id,
+        name: p.name,
+        description: p.description,
+        status: p.status,
+        color: p.color,
+      })),
     };
   }
 

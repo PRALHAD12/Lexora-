@@ -18,13 +18,6 @@ const router = Router();
 router.use(authenticate);
 
 /**
- * @route   GET /api/v1/users/me/dashboard-stats
- * @desc    Get real-time dashboard analytics metrics for logged in user
- * @access  Authenticated user
- */
-router.get("/me/dashboard-stats", userController.getDashboardStats);
-
-/**
  * @route   GET /api/v1/users
  * @desc    List all users with pagination and filtering
  * @access  Admin only
