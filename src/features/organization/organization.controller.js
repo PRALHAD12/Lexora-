@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Organization from "./Organization.model.js";
 import Project from "./Project.model.js";
 import User from "../user/user.model.js";
@@ -62,12 +63,25 @@ export const getMyOrganizations = asyncHandler(async (req, res) => {
   const orgsWithProjects = await Promise.all(
     organizations.map(async (org) => {
       const projects = await Project.find({ organizationId: org._id })
+        .populate("createdBy", "firstName lastName email")
         .sort({ createdAt: -1 })
         .lean();
+
+      const normalizedProjects = projects.map((p) => {
+        const creatorObj = typeof p.createdBy === "object" && p.createdBy !== null ? p.createdBy : null;
+        const creatorName = p.creatorName || (creatorObj ? `${creatorObj.firstName || ''} ${creatorObj.lastName || ''}`.trim() : "Lexora User");
+        const creatorEmail = p.creatorEmail || creatorObj?.email || "user@lexora.ai";
+        return {
+          ...p,
+          creatorName,
+          creatorEmail,
+        };
+      });
+
       return {
         ...org,
         id: org._id,
-        projects,
+        projects: normalizedProjects,
       };
     }),
   );
@@ -368,11 +382,27 @@ export const createProject = asyncHandler(async (req, res) => {
     throw ApiError.forbidden("You are not a member of this organization");
   }
 
+  let userObj = null;
+  if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+    userObj = await User.findById(userId).lean().catch(() => null);
+  }
+  if (!userObj && req.user?.email) {
+    userObj = await User.findOne({ email: req.user.email.toLowerCase() }).lean().catch(() => null);
+  }
+  if (!userObj && req.user?.sub) {
+    userObj = await User.findOne({ cognitoSub: req.user.sub }).lean().catch(() => null);
+  }
+
+  const creatorEmail = userObj?.email || req.user?.email || "user@lexora.ai";
+  const creatorName = userObj ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() : (req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : "Real User");
+
   const project = await Project.create({
     name,
     description,
     organizationId: orgId,
     createdBy: userId,
+    creatorName,
+    creatorEmail,
     color: color || "#3B82F6",
   });
 
@@ -391,10 +421,14 @@ export const getProjects = asyncHandler(async (req, res) => {
   const userId = req.user?.id || req.user?.sub;
   const { orgId } = req.params;
 
+  if (!orgId || orgId === "undefined" || orgId === "null" || !mongoose.Types.ObjectId.isValid(orgId)) {
+    return ApiResponse.ok(res, "Projects retrieved successfully", []);
+  }
+
   // Verify the user belongs to this organization
   const organization = await Organization.findById(orgId);
   if (!organization) {
-    throw ApiError.notFound("Organization not found");
+    return ApiResponse.ok(res, "Projects retrieved successfully", []);
   }
 
   const isMember =
@@ -406,10 +440,22 @@ export const getProjects = asyncHandler(async (req, res) => {
   }
 
   const projects = await Project.find({ organizationId: orgId })
+    .populate("createdBy", "firstName lastName email")
     .sort({ createdAt: -1 })
     .lean();
 
-  return ApiResponse.ok(res, "Projects retrieved successfully", projects);
+  const normalizedProjects = projects.map((p) => {
+    const creatorObj = typeof p.createdBy === "object" && p.createdBy !== null ? p.createdBy : null;
+    const creatorName = p.creatorName || (creatorObj ? `${creatorObj.firstName || ''} ${creatorObj.lastName || ''}`.trim() : "Lexora User");
+    const creatorEmail = p.creatorEmail || creatorObj?.email || "user@lexora.ai";
+    return {
+      ...p,
+      creatorName,
+      creatorEmail,
+    };
+  });
+
+  return ApiResponse.ok(res, "Projects retrieved successfully", normalizedProjects);
 });
 
 /**

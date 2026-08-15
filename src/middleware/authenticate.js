@@ -11,7 +11,7 @@ import User from "../features/user/user.model.js";
  *
  * Expected header format: Authorization: Bearer <token>
  */
-const authenticate = async (req, _res, next) => {
+export const authenticate = async (req, _res, next) => {
   try {
     // 1. Extract token from Authorization header
     const authHeader = req.headers.authorization;
@@ -38,8 +38,15 @@ const authenticate = async (req, _res, next) => {
       throw ApiError.unauthorized(ERROR_MESSAGES.TOKEN_INVALID);
     }
 
-    // 3. Enrich with local user profile from DB
-    const localUser = await User.findOne({ cognitoSub: payload.sub }).lean();
+    // 3. Enrich with local user profile from DB (query by cognitoSub OR email)
+    const queryConds = [{ cognitoSub: payload.sub }];
+    if (payload.email) queryConds.push({ email: payload.email.toLowerCase() });
+    if (payload.username && payload.username.includes("@")) queryConds.push({ email: payload.username.toLowerCase() });
+
+    let localUser = await User.findOne({ $or: queryConds }).lean();
+    if (!localUser && payload.email) {
+      localUser = await User.findOne({ email: payload.email.toLowerCase() }).lean();
+    }
 
     // 4. Attach user info to request
     req.user = {

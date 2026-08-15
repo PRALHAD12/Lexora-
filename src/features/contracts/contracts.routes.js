@@ -1,11 +1,15 @@
 import { Router } from "express";
 import multer from "multer";
 import {
-  uploadAndParseContract,
-  getAuditHistory,
+  createContractDraft,
+  updateContract,
+  listContracts,
   getContractById,
   deleteContract,
+  uploadAndParseContract,
+  getAuditHistory,
 } from "./contracts.controller.js";
+import { authenticate } from "../../middleware/authenticate.js";
 
 // Multer in-memory storage configuration
 const storage = multer.memoryStorage();
@@ -16,14 +20,27 @@ const upload = multer({
 
 const router = Router();
 
-// POST /api/v1/contracts/upload
-router.post("/upload", upload.single("contract"), uploadAndParseContract);
+// Apply auth to contract routes
+router.use(authenticate);
+
+// POST /api/v1/contracts (and /create)
+router.post("/", createContractDraft);
+router.post("/create", createContractDraft);
+
+// GET /api/v1/contracts
+router.get("/", listContracts);
 
 // GET /api/v1/contracts/history
 router.get("/history", getAuditHistory);
 
+// POST /api/v1/contracts/upload
+router.post("/upload", upload.single("contract"), uploadAndParseContract);
+
 // GET /api/v1/contracts/:id
 router.get("/:id", getContractById);
+
+// PUT /api/v1/contracts/:id
+router.put("/:id", updateContract);
 
 // DELETE /api/v1/contracts/:id
 router.delete("/:id", deleteContract);

@@ -86,11 +86,10 @@ export const createProjectValidation = [
     .isLength({ min: 2, max: 100 })
     .withMessage("Project name must be between 2 and 100 characters"),
   body("description")
+    .optional()
     .trim()
-    .notEmpty()
-    .withMessage("Project description is required")
-    .isLength({ min: 2, max: 1000 })
-    .withMessage("Project description must be between 2 and 1000 characters"),
+    .isLength({ max: 1000 })
+    .withMessage("Project description must be at most 1000 characters"),
   body("color")
     .optional()
     .trim()

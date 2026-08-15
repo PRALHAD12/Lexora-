@@ -27,6 +27,16 @@ const projectSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    creatorName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    creatorEmail: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     status: {
       type: String,
       enum: ["active", "archived", "completed"],
