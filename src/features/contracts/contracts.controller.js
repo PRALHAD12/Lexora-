@@ -118,7 +118,7 @@ export const listContracts = asyncHandler(async (req, res) => {
   const userQuery = buildUserQuery(req);
   const { organizationId, projectId } = req.query;
 
-  const query = { ...userQuery };
+  const query = { ...userQuery, isDeleted: { $ne: true }, status: { $ne: "archived" } };
   if (organizationId && organizationId !== "undefined" && organizationId !== "null" && mongoose.Types.ObjectId.isValid(organizationId)) {
     query.organizationId = organizationId;
   }
@@ -183,13 +183,15 @@ export const deleteContract = asyncHandler(async (req, res) => {
     throw ApiError.forbidden("You do not have permission to delete this contract");
   }
 
-  await Contract.findByIdAndDelete(id);
+  contract.isDeleted = true;
+  contract.status = "archived";
+  await contract.save();
 
   // Invalidate Redis cache
   await cacheDel(`contract:${id}`);
   await cacheDel(`contracts:history:${contract.userId}`);
 
-  logger.info(`Contract deleted: ID ${id}`);
+  logger.info(`Contract soft-deleted/archived: ID ${id}`);
 
   return ApiResponse.ok(res, "Contract deleted successfully");
 });

@@ -102,6 +102,11 @@ const contractSchema = new mongoose.Schema(
       enum: ["draft", "in_review", "approved", "archived"],
       default: "draft",
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     version: {
       type: Number,
       default: 1,
