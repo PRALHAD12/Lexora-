@@ -40,11 +40,15 @@ const config = {
 
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
-    maxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) || 100,
+    maxRequests:
+      parseInt(process.env.RATE_LIMIT_MAX_REQUESTS, 10) ||
+      (process.env.NODE_ENV === "production" ? 100 : 1000),
     auth: {
       windowMs:
         parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS, 10) || 15 * 60 * 1000,
-      maxRequests: parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS, 10) || 20,
+      maxRequests:
+        parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS, 10) ||
+        (process.env.NODE_ENV === "production" ? 20 : 200),
     },
   },
 

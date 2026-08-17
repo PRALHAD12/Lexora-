@@ -41,6 +41,27 @@ router.post(
 router.get("/me", orgController.getMyOrganizations);
 
 /**
+ * @route   GET /api/v1/organizations/invitations/me
+ * @desc    Get all pending organization invitations for current user
+ * @access  Private
+ */
+router.get("/invitations/me", orgController.getMyInvitations);
+
+/**
+ * @route   POST /api/v1/organizations/invitations/:orgId/accept
+ * @desc    Accept an invitation to join an organization
+ * @access  Private
+ */
+router.post("/invitations/:orgId/accept", orgController.acceptInvitation);
+
+/**
+ * @route   POST /api/v1/organizations/invitations/:orgId/decline
+ * @desc    Decline an invitation to join an organization
+ * @access  Private
+ */
+router.post("/invitations/:orgId/decline", orgController.declineInvitation);
+
+/**
  * @route   PUT /api/v1/organizations/:id
  * @desc    Update an organization (name, description, industry)
  * @access  Private (Owner or Admin)

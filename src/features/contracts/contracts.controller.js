@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { Contract } from "./Contract.model.js";
 import User from "../user/user.model.js";
+import Organization from "../organization/Organization.model.js";
 import { parseDocumentText } from "../../utils/documentParser.util.js";
 import logger from "../../utils/logger.js";
 import { cacheGet, cacheSet, cacheDel } from "../../utils/cacheService.util.js";
@@ -17,6 +18,31 @@ const buildUserQuery = (req) => {
   const candidates = [userSub, userId].filter(Boolean);
   if (candidates.length === 1) return { userId: candidates[0] };
   return { userId: { $in: candidates } };
+};
+
+/**
+ * Helper to check user's role in an organization ('owner' | 'admin' | 'editor' | 'viewer' | null)
+ */
+const getUserOrgRole = async (organizationId, userId, userEmail) => {
+  if (!organizationId || !mongoose.Types.ObjectId.isValid(organizationId)) return null;
+  const org = await Organization.findById(organizationId).lean();
+  if (!org) return null;
+  const isOwner =
+    (org.owner && org.owner.toString() === userId?.toString()) ||
+    (org.owner && org.owner._id && org.owner._id.toString() === userId?.toString());
+  if (isOwner) return "owner";
+
+  const cleanEmail = userEmail ? userEmail.toLowerCase() : "";
+  const member = org.members?.find((m) => {
+    const mUserId = m.userId?._id?.toString() || m.userId?.toString();
+    const mEmail = (m.email || (m.userId && typeof m.userId === "object" && m.userId.email)) || "";
+    return (
+      (mUserId && (mUserId === userId?.toString())) ||
+      (cleanEmail && mEmail.toLowerCase() === cleanEmail)
+    );
+  });
+
+  return member && member.status === "active" ? member.role : null;
 };
 
 /**
@@ -40,6 +66,17 @@ export const createContractDraft = asyncHandler(async (req, res) => {
   const userEmail = userObj?.email || req.user?.email || "user@lexora.ai";
   const userName = userObj ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() : (req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : "Real User");
   const { title, content, organizationId, projectId, initialPrompt, clauses, status } = req.body;
+
+  // Check organization permissions
+  if (organizationId && organizationId !== "undefined" && organizationId !== "null" && mongoose.Types.ObjectId.isValid(organizationId)) {
+    const role = await getUserOrgRole(organizationId, req.user?.id || req.user?.sub, userEmail);
+    if (!role) {
+      throw ApiError.forbidden("You are not a member of this organization");
+    }
+    if (role === "viewer") {
+      throw ApiError.forbidden("Viewers have read-only access and cannot create contracts");
+    }
+  }
 
   const contract = await Contract.create({
     userId,
@@ -85,7 +122,17 @@ export const updateContract = asyncHandler(async (req, res) => {
   }
 
   const reqUserCandidates = [req.user?.sub, req.user?.id, req.user?._id?.toString()].filter(Boolean);
-  if (reqUserCandidates.length > 0 && !reqUserCandidates.includes(contract.userId.toString())) {
+  const targetOrgId = organizationId || contract.organizationId;
+
+  if (targetOrgId) {
+    const role = await getUserOrgRole(targetOrgId, req.user?.id || req.user?.sub, req.user?.email);
+    if (!role) {
+      throw ApiError.forbidden("You do not have access to this organization's contracts");
+    }
+    if (role === "viewer") {
+      throw ApiError.forbidden("Viewers have read-only access and cannot edit contracts");
+    }
+  } else if (reqUserCandidates.length > 0 && !reqUserCandidates.includes(contract.userId.toString())) {
     throw ApiError.forbidden("You do not have permission to edit this contract");
   }
 
@@ -115,13 +162,21 @@ export const updateContract = asyncHandler(async (req, res) => {
  * List all contracts for the current user (optionally filtered by org/project)
  */
 export const listContracts = asyncHandler(async (req, res) => {
-  const userQuery = buildUserQuery(req);
   const { organizationId, projectId } = req.query;
 
-  const query = { ...userQuery, isDeleted: { $ne: true }, status: { $ne: "archived" } };
+  const query = { isDeleted: { $ne: true }, status: { $ne: "archived" } };
+
   if (organizationId && organizationId !== "undefined" && organizationId !== "null" && mongoose.Types.ObjectId.isValid(organizationId)) {
+    const role = await getUserOrgRole(organizationId, req.user?.id || req.user?.sub, req.user?.email);
+    if (!role) {
+      throw ApiError.forbidden("You are not a member of this organization");
+    }
     query.organizationId = organizationId;
+  } else {
+    const userQuery = buildUserQuery(req);
+    Object.assign(query, userQuery);
   }
+
   if (projectId && projectId !== "undefined" && projectId !== "null" && mongoose.Types.ObjectId.isValid(projectId)) {
     query.projectId = projectId;
   }

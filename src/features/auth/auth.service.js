@@ -148,8 +148,27 @@ class AuthService {
     let projects = [];
     if (localUser) {
       try {
+        const orgConditions = [
+          { owner: localUser._id },
+          { "members.userId": localUser._id },
+        ];
+        if (localUser.email) {
+          orgConditions.push({ "members.email": localUser.email.toLowerCase() });
+          // Auto-link pending invites
+          await Organization.updateMany(
+            { "members.email": localUser.email.toLowerCase(), "members.userId": null },
+            {
+              $set: {
+                "members.$[elem].userId": localUser._id,
+                "members.$[elem].status": "active",
+              },
+            },
+            { arrayFilters: [{ "elem.email": localUser.email.toLowerCase() }] },
+          ).catch(() => {});
+        }
+
         organization = await Organization.findOne({
-          $or: [{ owner: localUser._id }, { "members.userId": localUser._id }],
+          $or: orgConditions,
           isActive: true,
         }).lean();
 
@@ -348,18 +367,77 @@ class AuthService {
       attributes[attr.Name] = attr.Value;
     }
 
-    // Fetch local DB profile
-    const localUser = await User.findOne({ cognitoSub: sub }).lean();
+    // Fetch local DB profile (search by cognitoSub OR email)
+    const userQuery = [{ cognitoSub: sub }];
+    if (attributes.email) {
+      userQuery.push({ email: attributes.email.toLowerCase() });
+    }
+    let localUser = await User.findOne({ $or: userQuery });
+
+    if (!localUser && attributes.email) {
+      // Auto-create local user if not present
+      try {
+        localUser = await User.create({
+          cognitoSub: sub,
+          email: attributes.email.toLowerCase(),
+          firstName: attributes.given_name || (attributes.name ? attributes.name.split(" ")[0] : "User"),
+          lastName: attributes.family_name || (attributes.name ? attributes.name.split(" ").slice(1).join(" ") : ""),
+          isEmailVerified: attributes.email_verified === "true",
+          role: "user",
+          isActive: true,
+        });
+      } catch (createErr) {
+        logger.warn(`Could not auto-create local user in getProfile: ${createErr.message}`);
+      }
+    } else if (localUser && (!localUser.cognitoSub || localUser.cognitoSub !== sub)) {
+      localUser.cognitoSub = sub;
+      await localUser.save().catch(() => {});
+    }
 
     // Fetch organization & projects
     let organization = null;
     let projects = [];
+    let allOrganizations = [];
     if (localUser) {
       try {
-        organization = await Organization.findOne({
-          $or: [{ owner: localUser._id }, { "members.userId": localUser._id }],
+        const orgConditions = [
+          { owner: localUser._id },
+          { members: { $elemMatch: { userId: localUser._id, status: "active" } } },
+        ];
+        if (localUser.email) {
+          orgConditions.push({
+            members: { $elemMatch: { email: localUser.email.toLowerCase(), status: "active" } },
+          });
+        }
+
+        const orgList = await Organization.find({
+          $or: orgConditions,
           isActive: true,
-        }).lean();
+        }).sort({ createdAt: -1 }).lean();
+
+        // Prioritize owned organization first so user always sees their own workspace
+        const ownedOrg = orgList.find(
+          (o) => o.owner?.toString() === localUser._id.toString(),
+        );
+        organization = ownedOrg || orgList[0] || null;
+
+        allOrganizations = orgList.map((o) => {
+          const isOwner = o.owner?.toString() === localUser._id.toString();
+          const userMember = o.members?.find(
+            (m) =>
+              m.userId?.toString() === localUser._id.toString() ||
+              (localUser.email && m.email?.toLowerCase() === localUser.email.toLowerCase()),
+          );
+          return {
+            id: o._id,
+            name: o.name,
+            slug: o.slug,
+            description: o.description,
+            industry: o.industry,
+            isOwner,
+            role: isOwner ? "owner" : userMember?.role || "viewer",
+          };
+        });
 
         if (organization) {
           projects = await Project.find({
@@ -369,21 +447,25 @@ class AuthService {
             .lean();
         }
       } catch {
-        // Gracefully handle invalid ObjectId in test/dev environments
+        // Gracefully handle in test/dev environments
         organization = null;
         projects = [];
       }
     }
 
+    const firstName = localUser?.firstName || attributes.given_name || (attributes.name ? attributes.name.split(" ")[0] : "User");
+    const lastName = localUser?.lastName || attributes.family_name || (attributes.name ? attributes.name.split(" ").slice(1).join(" ") : "");
+
     return {
+      id: localUser?._id?.toString() || attributes.sub,
       sub: attributes.sub,
-      email: attributes.email,
-      emailVerified: attributes.email_verified === "true",
-      firstName: attributes.given_name || localUser?.firstName,
-      lastName: attributes.family_name || localUser?.lastName,
+      email: attributes.email || localUser?.email,
+      emailVerified: attributes.email_verified === "true" || localUser?.isEmailVerified,
+      firstName,
+      lastName,
       role: localUser?.role || "user",
       avatar: localUser?.avatar,
-      isActive: localUser?.isActive,
+      isActive: localUser?.isActive ?? true,
       createdAt: localUser?.createdAt,
       updatedAt: localUser?.updatedAt,
       organization: organization
@@ -395,6 +477,7 @@ class AuthService {
             industry: organization.industry,
           }
         : null,
+      organizations: allOrganizations,
       projects: projects.map((p) => ({
         id: p._id,
         name: p.name,

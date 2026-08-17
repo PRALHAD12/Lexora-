@@ -38,16 +38,35 @@ const organizationSchema = new mongoose.Schema(
         userId: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "User",
-          required: true,
+          required: false,
+        },
+        email: {
+          type: String,
+          trim: true,
+          lowercase: true,
         },
         role: {
           type: String,
           enum: ["owner", "admin", "editor", "viewer"],
           default: "viewer",
         },
+        status: {
+          type: String,
+          enum: ["active", "pending", "declined"],
+          default: "pending",
+        },
+        invitedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+          required: false,
+        },
         joinedAt: {
           type: Date,
           default: Date.now,
+        },
+        respondedAt: {
+          type: Date,
+          required: false,
         },
       },
     ],
@@ -102,11 +121,20 @@ organizationSchema.pre("save", function (next) {
 // ─── Static Methods ──────────────────────────────────────────────
 
 /**
- * Find all organizations a user belongs to (as owner or member).
+ * Find all organizations a user belongs to (as owner or active member).
  */
-organizationSchema.statics.findByUser = function (userId) {
+organizationSchema.statics.findByUser = function (userId, userEmail) {
+  const conditions = [
+    { owner: userId },
+    { members: { $elemMatch: { userId, status: "active" } } },
+  ];
+  if (userEmail) {
+    conditions.push({
+      members: { $elemMatch: { email: userEmail.toLowerCase(), status: "active" } },
+    });
+  }
   return this.find({
-    $or: [{ owner: userId }, { "members.userId": userId }],
+    $or: conditions,
     isActive: true,
   }).sort({ createdAt: -1 });
 };
