@@ -1,5 +1,25 @@
 services:
-  # Lexora Backend Service
+  # 1. Lexora Frontend Web App
+  web:
+    build:
+      context: ../lexora-frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000/api/v1}
+    container_name: lexora-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:5000/api/v1}
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - lexora-network
+
+  # 2. Lexora Backend API Service
   api:
     build:
       context: .
@@ -23,7 +43,7 @@ services:
     networks:
       - lexora-network
 
-  # MongoDB Database Service
+  # 3. MongoDB Database Service
   mongo:
     image: mongo:7.0
     container_name: lexora-mongodb
