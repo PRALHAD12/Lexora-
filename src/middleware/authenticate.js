@@ -40,12 +40,18 @@ export const authenticate = async (req, _res, next) => {
 
     // 3. Enrich with local user profile from DB (query by cognitoSub OR email)
     const queryConds = [{ cognitoSub: payload.sub }];
-    if (payload.email) queryConds.push({ email: payload.email.toLowerCase() });
-    if (payload.username && payload.username.includes("@")) queryConds.push({ email: payload.username.toLowerCase() });
+    if (payload.email) {
+      queryConds.push({ email: payload.email.toLowerCase() });
+    }
+    if (payload.username && payload.username.includes("@")) {
+      queryConds.push({ email: payload.username.toLowerCase() });
+    }
 
     let localUser = await User.findOne({ $or: queryConds }).lean();
     if (!localUser && payload.email) {
-      localUser = await User.findOne({ email: payload.email.toLowerCase() }).lean();
+      localUser = await User.findOne({
+        email: payload.email.toLowerCase(),
+      }).lean();
     }
 
     // 4. Attach user info to request

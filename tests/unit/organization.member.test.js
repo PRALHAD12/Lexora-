@@ -84,7 +84,9 @@ describe("Organization Member Management", () => {
   });
 
   it("should allow removing a non-owner member", () => {
-    const memberIdToRemove = new mongoose.Types.ObjectId("64b8f0f0f0f0f0f0f0f00005");
+    const memberIdToRemove = new mongoose.Types.ObjectId(
+      "64b8f0f0f0f0f0f0f0f00005",
+    );
     mockOrg.members.push({
       _id: memberIdToRemove,
       userId: mockUser._id,

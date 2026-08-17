@@ -153,10 +153,15 @@ class AuthService {
           { "members.userId": localUser._id },
         ];
         if (localUser.email) {
-          orgConditions.push({ "members.email": localUser.email.toLowerCase() });
+          orgConditions.push({
+            "members.email": localUser.email.toLowerCase(),
+          });
           // Auto-link pending invites
           await Organization.updateMany(
-            { "members.email": localUser.email.toLowerCase(), "members.userId": null },
+            {
+              "members.email": localUser.email.toLowerCase(),
+              "members.userId": null,
+            },
             {
               $set: {
                 "members.$[elem].userId": localUser._id,
@@ -380,16 +385,27 @@ class AuthService {
         localUser = await User.create({
           cognitoSub: sub,
           email: attributes.email.toLowerCase(),
-          firstName: attributes.given_name || (attributes.name ? attributes.name.split(" ")[0] : "User"),
-          lastName: attributes.family_name || (attributes.name ? attributes.name.split(" ").slice(1).join(" ") : ""),
+          firstName:
+            attributes.given_name ||
+            (attributes.name ? attributes.name.split(" ")[0] : "User"),
+          lastName:
+            attributes.family_name ||
+            (attributes.name
+              ? attributes.name.split(" ").slice(1).join(" ")
+              : ""),
           isEmailVerified: attributes.email_verified === "true",
           role: "user",
           isActive: true,
         });
       } catch (createErr) {
-        logger.warn(`Could not auto-create local user in getProfile: ${createErr.message}`);
+        logger.warn(
+          `Could not auto-create local user in getProfile: ${createErr.message}`,
+        );
       }
-    } else if (localUser && (!localUser.cognitoSub || localUser.cognitoSub !== sub)) {
+    } else if (
+      localUser &&
+      (!localUser.cognitoSub || localUser.cognitoSub !== sub)
+    ) {
       localUser.cognitoSub = sub;
       await localUser.save().catch(() => {});
     }
@@ -402,18 +418,29 @@ class AuthService {
       try {
         const orgConditions = [
           { owner: localUser._id },
-          { members: { $elemMatch: { userId: localUser._id, status: "active" } } },
+          {
+            members: {
+              $elemMatch: { userId: localUser._id, status: "active" },
+            },
+          },
         ];
         if (localUser.email) {
           orgConditions.push({
-            members: { $elemMatch: { email: localUser.email.toLowerCase(), status: "active" } },
+            members: {
+              $elemMatch: {
+                email: localUser.email.toLowerCase(),
+                status: "active",
+              },
+            },
           });
         }
 
         const orgList = await Organization.find({
           $or: orgConditions,
           isActive: true,
-        }).sort({ createdAt: -1 }).lean();
+        })
+          .sort({ createdAt: -1 })
+          .lean();
 
         // Prioritize owned organization first so user always sees their own workspace
         const ownedOrg = orgList.find(
@@ -426,7 +453,8 @@ class AuthService {
           const userMember = o.members?.find(
             (m) =>
               m.userId?.toString() === localUser._id.toString() ||
-              (localUser.email && m.email?.toLowerCase() === localUser.email.toLowerCase()),
+              (localUser.email &&
+                m.email?.toLowerCase() === localUser.email.toLowerCase()),
           );
           return {
             id: o._id,
@@ -453,14 +481,21 @@ class AuthService {
       }
     }
 
-    const firstName = localUser?.firstName || attributes.given_name || (attributes.name ? attributes.name.split(" ")[0] : "User");
-    const lastName = localUser?.lastName || attributes.family_name || (attributes.name ? attributes.name.split(" ").slice(1).join(" ") : "");
+    const firstName =
+      localUser?.firstName ||
+      attributes.given_name ||
+      (attributes.name ? attributes.name.split(" ")[0] : "User");
+    const lastName =
+      localUser?.lastName ||
+      attributes.family_name ||
+      (attributes.name ? attributes.name.split(" ").slice(1).join(" ") : "");
 
     return {
       id: localUser?._id?.toString() || attributes.sub,
       sub: attributes.sub,
       email: attributes.email || localUser?.email,
-      emailVerified: attributes.email_verified === "true" || localUser?.isEmailVerified,
+      emailVerified:
+        attributes.email_verified === "true" || localUser?.isEmailVerified,
       firstName,
       lastName,
       role: localUser?.role || "user",

@@ -16,7 +16,9 @@ const buildUserQuery = (req) => {
   const userSub = req.user?.sub;
   const userId = req.user?.id || req.user?._id?.toString();
   const candidates = [userSub, userId].filter(Boolean);
-  if (candidates.length === 1) return { userId: candidates[0] };
+  if (candidates.length === 1) {
+    return { userId: candidates[0] };
+  }
   return { userId: { $in: candidates } };
 };
 
@@ -24,20 +26,31 @@ const buildUserQuery = (req) => {
  * Helper to check user's role in an organization ('owner' | 'admin' | 'editor' | 'viewer' | null)
  */
 const getUserOrgRole = async (organizationId, userId, userEmail) => {
-  if (!organizationId || !mongoose.Types.ObjectId.isValid(organizationId)) return null;
+  if (!organizationId || !mongoose.Types.ObjectId.isValid(organizationId)) {
+    return null;
+  }
   const org = await Organization.findById(organizationId).lean();
-  if (!org) return null;
+  if (!org) {
+    return null;
+  }
   const isOwner =
     (org.owner && org.owner.toString() === userId?.toString()) ||
-    (org.owner && org.owner._id && org.owner._id.toString() === userId?.toString());
-  if (isOwner) return "owner";
+    (org.owner &&
+      org.owner._id &&
+      org.owner._id.toString() === userId?.toString());
+  if (isOwner) {
+    return "owner";
+  }
 
   const cleanEmail = userEmail ? userEmail.toLowerCase() : "";
   const member = org.members?.find((m) => {
     const mUserId = m.userId?._id?.toString() || m.userId?.toString();
-    const mEmail = (m.email || (m.userId && typeof m.userId === "object" && m.userId.email)) || "";
+    const mEmail =
+      m.email ||
+      (m.userId && typeof m.userId === "object" && m.userId.email) ||
+      "";
     return (
-      (mUserId && (mUserId === userId?.toString())) ||
+      (mUserId && mUserId === userId?.toString()) ||
       (cleanEmail && mEmail.toLowerCase() === cleanEmail)
     );
   });
@@ -51,30 +64,59 @@ const getUserOrgRole = async (organizationId, userId, userEmail) => {
  */
 export const createContractDraft = asyncHandler(async (req, res) => {
   const userId = req.user?.sub || req.user?.id || req.user?._id || "demo-user";
-  
+
   let userObj = null;
   if (req.user?.id && mongoose.Types.ObjectId.isValid(req.user.id)) {
-    userObj = await User.findById(req.user.id).lean().catch(() => null);
+    userObj = await User.findById(req.user.id)
+      .lean()
+      .catch(() => null);
   }
   if (!userObj && req.user?.email) {
-    userObj = await User.findOne({ email: req.user.email.toLowerCase() }).lean().catch(() => null);
+    userObj = await User.findOne({ email: req.user.email.toLowerCase() })
+      .lean()
+      .catch(() => null);
   }
   if (!userObj && req.user?.sub) {
-    userObj = await User.findOne({ cognitoSub: req.user.sub }).lean().catch(() => null);
+    userObj = await User.findOne({ cognitoSub: req.user.sub })
+      .lean()
+      .catch(() => null);
   }
 
   const userEmail = userObj?.email || req.user?.email || "user@lexora.ai";
-  const userName = userObj ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() : (req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : "Real User");
-  const { title, content, organizationId, projectId, initialPrompt, clauses, status } = req.body;
+  const userName = userObj
+    ? `${userObj.firstName || ""} ${userObj.lastName || ""}`.trim()
+    : req.user?.firstName
+      ? `${req.user.firstName} ${req.user.lastName || ""}`.trim()
+      : "Real User";
+  const {
+    title,
+    content,
+    organizationId,
+    projectId,
+    initialPrompt,
+    clauses,
+    status,
+  } = req.body;
 
   // Check organization permissions
-  if (organizationId && organizationId !== "undefined" && organizationId !== "null" && mongoose.Types.ObjectId.isValid(organizationId)) {
-    const role = await getUserOrgRole(organizationId, req.user?.id || req.user?.sub, userEmail);
+  if (
+    organizationId &&
+    organizationId !== "undefined" &&
+    organizationId !== "null" &&
+    mongoose.Types.ObjectId.isValid(organizationId)
+  ) {
+    const role = await getUserOrgRole(
+      organizationId,
+      req.user?.id || req.user?.sub,
+      userEmail,
+    );
     if (!role) {
       throw ApiError.forbidden("You are not a member of this organization");
     }
     if (role === "viewer") {
-      throw ApiError.forbidden("Viewers have read-only access and cannot create contracts");
+      throw ApiError.forbidden(
+        "Viewers have read-only access and cannot create contracts",
+      );
     }
   }
 
@@ -99,9 +141,15 @@ export const createContractDraft = asyncHandler(async (req, res) => {
   // Invalidate Redis history cache
   await cacheDel(`contracts:history:${userId}`);
 
-  logger.info(`Contract draft created: "${contract.title}" (ID: ${contract._id}) by ${userName} (${userEmail})`);
+  logger.info(
+    `Contract draft created: "${contract.title}" (ID: ${contract._id}) by ${userName} (${userEmail})`,
+  );
 
-  return ApiResponse.created(res, "Contract draft created successfully", contract);
+  return ApiResponse.created(
+    res,
+    "Contract draft created successfully",
+    contract,
+  );
 });
 
 /**
@@ -110,9 +158,23 @@ export const createContractDraft = asyncHandler(async (req, res) => {
  */
 export const updateContract = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { title, content, organizationId, projectId, clauses, status, riskRating, flaggedRisksCount } = req.body;
+  const {
+    title,
+    content,
+    organizationId,
+    projectId,
+    clauses,
+    status,
+    riskRating,
+    flaggedRisksCount,
+  } = req.body;
 
-  if (!id || id === "undefined" || id === "null" || !mongoose.Types.ObjectId.isValid(id)) {
+  if (
+    !id ||
+    id === "undefined" ||
+    id === "null" ||
+    !mongoose.Types.ObjectId.isValid(id)
+  ) {
     throw ApiError.notFound("Contract not found");
   }
 
@@ -121,29 +183,62 @@ export const updateContract = asyncHandler(async (req, res) => {
     throw ApiError.notFound("Contract not found");
   }
 
-  const reqUserCandidates = [req.user?.sub, req.user?.id, req.user?._id?.toString()].filter(Boolean);
+  const reqUserCandidates = [
+    req.user?.sub,
+    req.user?.id,
+    req.user?._id?.toString(),
+  ].filter(Boolean);
   const targetOrgId = organizationId || contract.organizationId;
 
   if (targetOrgId) {
-    const role = await getUserOrgRole(targetOrgId, req.user?.id || req.user?.sub, req.user?.email);
+    const role = await getUserOrgRole(
+      targetOrgId,
+      req.user?.id || req.user?.sub,
+      req.user?.email,
+    );
     if (!role) {
-      throw ApiError.forbidden("You do not have access to this organization's contracts");
+      throw ApiError.forbidden(
+        "You do not have access to this organization's contracts",
+      );
     }
     if (role === "viewer") {
-      throw ApiError.forbidden("Viewers have read-only access and cannot edit contracts");
+      throw ApiError.forbidden(
+        "Viewers have read-only access and cannot edit contracts",
+      );
     }
-  } else if (reqUserCandidates.length > 0 && !reqUserCandidates.includes(contract.userId.toString())) {
-    throw ApiError.forbidden("You do not have permission to edit this contract");
+  } else if (
+    reqUserCandidates.length > 0 &&
+    !reqUserCandidates.includes(contract.userId.toString())
+  ) {
+    throw ApiError.forbidden(
+      "You do not have permission to edit this contract",
+    );
   }
 
-  if (title !== undefined) contract.title = title;
-  if (content !== undefined) contract.content = content;
-  if (organizationId !== undefined) contract.organizationId = organizationId || null;
-  if (projectId !== undefined) contract.projectId = projectId || null;
-  if (clauses !== undefined) contract.clauses = clauses;
-  if (status !== undefined) contract.status = status;
-  if (riskRating !== undefined) contract.riskRating = riskRating;
-  if (flaggedRisksCount !== undefined) contract.flaggedRisksCount = flaggedRisksCount;
+  if (title !== undefined) {
+    contract.title = title;
+  }
+  if (content !== undefined) {
+    contract.content = content;
+  }
+  if (organizationId !== undefined) {
+    contract.organizationId = organizationId || null;
+  }
+  if (projectId !== undefined) {
+    contract.projectId = projectId || null;
+  }
+  if (clauses !== undefined) {
+    contract.clauses = clauses;
+  }
+  if (status !== undefined) {
+    contract.status = status;
+  }
+  if (riskRating !== undefined) {
+    contract.riskRating = riskRating;
+  }
+  if (flaggedRisksCount !== undefined) {
+    contract.flaggedRisksCount = flaggedRisksCount;
+  }
 
   contract.version = (contract.version || 1) + 1;
   await contract.save();
@@ -152,7 +247,9 @@ export const updateContract = asyncHandler(async (req, res) => {
   await cacheSet(`contract:${contract._id}`, contract, 3600);
   await cacheDel(`contracts:history:${contract.userId}`);
 
-  logger.info(`Contract updated: "${contract.title}" (v${contract.version}) [Project: ${contract.projectId}] by user ${contract.userId}`);
+  logger.info(
+    `Contract updated: "${contract.title}" (v${contract.version}) [Project: ${contract.projectId}] by user ${contract.userId}`,
+  );
 
   return ApiResponse.ok(res, "Contract updated successfully", contract);
 });
@@ -166,8 +263,17 @@ export const listContracts = asyncHandler(async (req, res) => {
 
   const query = { isDeleted: { $ne: true }, status: { $ne: "archived" } };
 
-  if (organizationId && organizationId !== "undefined" && organizationId !== "null" && mongoose.Types.ObjectId.isValid(organizationId)) {
-    const role = await getUserOrgRole(organizationId, req.user?.id || req.user?.sub, req.user?.email);
+  if (
+    organizationId &&
+    organizationId !== "undefined" &&
+    organizationId !== "null" &&
+    mongoose.Types.ObjectId.isValid(organizationId)
+  ) {
+    const role = await getUserOrgRole(
+      organizationId,
+      req.user?.id || req.user?.sub,
+      req.user?.email,
+    );
     if (!role) {
       throw ApiError.forbidden("You are not a member of this organization");
     }
@@ -177,7 +283,12 @@ export const listContracts = asyncHandler(async (req, res) => {
     Object.assign(query, userQuery);
   }
 
-  if (projectId && projectId !== "undefined" && projectId !== "null" && mongoose.Types.ObjectId.isValid(projectId)) {
+  if (
+    projectId &&
+    projectId !== "undefined" &&
+    projectId !== "null" &&
+    mongoose.Types.ObjectId.isValid(projectId)
+  ) {
     query.projectId = projectId;
   }
 
@@ -197,7 +308,12 @@ export const listContracts = asyncHandler(async (req, res) => {
 export const getContractById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  if (!id || id === "undefined" || id === "null" || !mongoose.Types.ObjectId.isValid(id)) {
+  if (
+    !id ||
+    id === "undefined" ||
+    id === "null" ||
+    !mongoose.Types.ObjectId.isValid(id)
+  ) {
     throw ApiError.notFound("Contract not found");
   }
 
@@ -233,9 +349,18 @@ export const deleteContract = asyncHandler(async (req, res) => {
     throw ApiError.notFound("Contract not found");
   }
 
-  const reqUserCandidates = [req.user?.sub, req.user?.id, req.user?._id?.toString()].filter(Boolean);
-  if (reqUserCandidates.length > 0 && !reqUserCandidates.includes(contract.userId.toString())) {
-    throw ApiError.forbidden("You do not have permission to delete this contract");
+  const reqUserCandidates = [
+    req.user?.sub,
+    req.user?.id,
+    req.user?._id?.toString(),
+  ].filter(Boolean);
+  if (
+    reqUserCandidates.length > 0 &&
+    !reqUserCandidates.includes(contract.userId.toString())
+  ) {
+    throw ApiError.forbidden(
+      "You do not have permission to delete this contract",
+    );
   }
 
   contract.isDeleted = true;
@@ -257,7 +382,9 @@ export const deleteContract = asyncHandler(async (req, res) => {
  */
 export const uploadAndParseContract = asyncHandler(async (req, res) => {
   if (!req.file) {
-    throw ApiError.badRequest("No file uploaded. Please upload a PDF or DOCX contract file.");
+    throw ApiError.badRequest(
+      "No file uploaded. Please upload a PDF or DOCX contract file.",
+    );
   }
 
   const { originalname, mimetype, size, buffer } = req.file;
@@ -270,7 +397,7 @@ export const uploadAndParseContract = asyncHandler(async (req, res) => {
   const lowerText = extractedText.toLowerCase();
   let riskRating = "Compliant";
   let flaggedRisksCount = 0;
-  let status = "draft";
+  const status = "draft";
 
   if (
     lowerText.includes("indemnify") ||
@@ -312,9 +439,15 @@ export const uploadAndParseContract = asyncHandler(async (req, res) => {
   await cacheSet(`contract:${contract._id}`, contract, 3600);
   await cacheDel(`contracts:history:${userId}`);
 
-  logger.info(`Contract ${originalname} uploaded and parsed for user ${userId}`);
+  logger.info(
+    `Contract ${originalname} uploaded and parsed for user ${userId}`,
+  );
 
-  return ApiResponse.created(res, "Contract uploaded and parsed successfully", contract);
+  return ApiResponse.created(
+    res,
+    "Contract uploaded and parsed successfully",
+    contract,
+  );
 });
 
 /**
@@ -328,13 +461,19 @@ export const getAuditHistory = asyncHandler(async (req, res) => {
   // Check Redis Cache
   const cachedHistory = await cacheGet(cacheKey);
   if (cachedHistory) {
-    return ApiResponse.ok(res, "Audit history retrieved from cache", cachedHistory);
+    return ApiResponse.ok(
+      res,
+      "Audit history retrieved from cache",
+      cachedHistory,
+    );
   }
 
   const contracts = await Contract.find(userQuery)
     .sort({ updatedAt: -1 })
     .limit(20)
-    .select("title fileName fileType riskRating flaggedRisksCount status createdAt updatedAt projectId");
+    .select(
+      "title fileName fileType riskRating flaggedRisksCount status createdAt updatedAt projectId",
+    );
 
   // Cache in Redis for 120 seconds
   await cacheSet(cacheKey, contracts, 120);

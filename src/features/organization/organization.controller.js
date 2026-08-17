@@ -22,10 +22,7 @@ export const createOrganization = asyncHandler(async (req, res) => {
 
   // Check if user already owns an organization
   const existingOrg = await Organization.findOne({
-    $or: [
-      { owner: userId },
-      ...(req.user?.id ? [{ owner: req.user.id }] : []),
-    ],
+    $or: [{ owner: userId }, ...(req.user?.id ? [{ owner: req.user.id }] : [])],
   });
   if (existingOrg) {
     throw ApiError.conflict(
@@ -40,7 +37,9 @@ export const createOrganization = asyncHandler(async (req, res) => {
     owner: userId,
     members: [
       {
-        userId: req.user?.id || (mongoose.Types.ObjectId.isValid(userId) ? userId : undefined),
+        userId:
+          req.user?.id ||
+          (mongoose.Types.ObjectId.isValid(userId) ? userId : undefined),
         email: userEmail ? userEmail.toLowerCase() : undefined,
         role: "owner",
         status: "active",
@@ -98,8 +97,12 @@ export const getMyOrganizations = asyncHandler(async (req, res) => {
     const bIsOwner =
       b.owner?.toString() === userId?.toString() ||
       (req.user?.id && b.owner?.toString() === req.user.id);
-    if (aIsOwner && !bIsOwner) return -1;
-    if (!aIsOwner && bIsOwner) return 1;
+    if (aIsOwner && !bIsOwner) {
+      return -1;
+    }
+    if (!aIsOwner && bIsOwner) {
+      return 1;
+    }
     return 0;
   });
 
@@ -119,7 +122,7 @@ export const getMyOrganizations = asyncHandler(async (req, res) => {
         const creatorName =
           p.creatorName ||
           (creatorObj
-            ? `${creatorObj.firstName || ''} ${creatorObj.lastName || ''}`.trim()
+            ? `${creatorObj.firstName || ""} ${creatorObj.lastName || ""}`.trim()
             : "Lexora User");
         const creatorEmail =
           p.creatorEmail || creatorObj?.email || "user@lexora.ai";
@@ -184,7 +187,11 @@ export const getMyInvitations = asyncHandler(async (req, res) => {
       },
     });
   }
-  if (userId && mongoose.Types.ObjectId.isValid(userId) && userId !== req.user?.id) {
+  if (
+    userId &&
+    mongoose.Types.ObjectId.isValid(userId) &&
+    userId !== req.user?.id
+  ) {
     orConditions.push({
       members: {
         $elemMatch: {
@@ -214,7 +221,9 @@ export const getMyInvitations = asyncHandler(async (req, res) => {
     const memberRecord = org.members.find((m) => {
       const mUserId = m.userId?._id?.toString() || m.userId?.toString();
       const mEmail =
-        (m.email || (m.userId && typeof m.userId === "object" && m.userId.email)) || "";
+        m.email ||
+        (m.userId && typeof m.userId === "object" && m.userId.email) ||
+        "";
       const isMatch =
         (mUserId && (mUserId === userId || mUserId === req.user?.id)) ||
         (userEmail && mEmail.toLowerCase() === userEmail);
@@ -233,7 +242,7 @@ export const getMyInvitations = asyncHandler(async (req, res) => {
         invitedAt: memberRecord.joinedAt,
         invitedBy: {
           name:
-            `${inviter.firstName || ''} ${inviter.lastName || ''}`.trim() ||
+            `${inviter.firstName || ""} ${inviter.lastName || ""}`.trim() ||
             inviter.email ||
             "Workspace Admin",
           email: inviter.email || "",
@@ -262,7 +271,9 @@ export const acceptInvitation = asyncHandler(async (req, res) => {
   const memberRecord = organization.members.find((m) => {
     const mUserId = m.userId?._id?.toString() || m.userId?.toString();
     const mEmail =
-      (m.email || (m.userId && typeof m.userId === "object" && m.userId.email)) || "";
+      m.email ||
+      (m.userId && typeof m.userId === "object" && m.userId.email) ||
+      "";
     const isMatch =
       (mUserId && (mUserId === userId || mUserId === req.user?.id)) ||
       (userEmail && mEmail.toLowerCase() === userEmail);
@@ -270,7 +281,9 @@ export const acceptInvitation = asyncHandler(async (req, res) => {
   });
 
   if (!memberRecord) {
-    throw ApiError.notFound("No pending invitation found for this organization");
+    throw ApiError.notFound(
+      "No pending invitation found for this organization",
+    );
   }
 
   memberRecord.status = "active";
@@ -315,7 +328,9 @@ export const declineInvitation = asyncHandler(async (req, res) => {
   const memberRecord = organization.members.find((m) => {
     const mUserId = m.userId?._id?.toString() || m.userId?.toString();
     const mEmail =
-      (m.email || (m.userId && typeof m.userId === "object" && m.userId.email)) || "";
+      m.email ||
+      (m.userId && typeof m.userId === "object" && m.userId.email) ||
+      "";
     const isMatch =
       (mUserId && (mUserId === userId || mUserId === req.user?.id)) ||
       (userEmail && mEmail.toLowerCase() === userEmail);
@@ -323,7 +338,9 @@ export const declineInvitation = asyncHandler(async (req, res) => {
   });
 
   if (!memberRecord) {
-    throw ApiError.notFound("No pending invitation found for this organization");
+    throw ApiError.notFound(
+      "No pending invitation found for this organization",
+    );
   }
 
   memberRecord.status = "declined";
@@ -337,10 +354,7 @@ export const declineInvitation = asyncHandler(async (req, res) => {
     `User ${userEmail || userId} declined invitation to ${organization.name}`,
   );
 
-  return ApiResponse.ok(
-    res,
-    `Invitation to ${organization.name} declined`,
-  );
+  return ApiResponse.ok(res, `Invitation to ${organization.name} declined`);
 });
 
 /**
@@ -424,17 +438,28 @@ export const deleteOrganization = asyncHandler(async (req, res) => {
  * Helper to check if a user is a member of an organization
  */
 const checkUserIsMember = (organization, userId, userEmail) => {
-  if (!organization) return false;
+  if (!organization) {
+    return false;
+  }
   const isOwner =
     (organization.owner && organization.owner.toString() === userId) ||
-    (organization.owner && organization.owner._id && organization.owner._id.toString() === userId);
-  if (isOwner) return true;
+    (organization.owner &&
+      organization.owner._id &&
+      organization.owner._id.toString() === userId);
+  if (isOwner) {
+    return true;
+  }
 
   return organization.members.some((m) => {
     const mUserId = m.userId?._id?.toString() || m.userId?.toString();
-    const mEmail = (m.email || (m.userId && typeof m.userId === "object" && m.userId.email)) || "";
+    const mEmail =
+      m.email ||
+      (m.userId && typeof m.userId === "object" && m.userId.email) ||
+      "";
     return (
-      (mUserId && (mUserId === userId || (typeof userId === "string" && mUserId === userId))) ||
+      (mUserId &&
+        (mUserId === userId ||
+          (typeof userId === "string" && mUserId === userId))) ||
       (userEmail && mEmail && mEmail.toLowerCase() === userEmail.toLowerCase())
     );
   });
@@ -444,17 +469,28 @@ const checkUserIsMember = (organization, userId, userEmail) => {
  * Helper to check if a user is an owner or admin of an organization
  */
 const checkUserIsAdminOrOwner = (organization, userId, userEmail) => {
-  if (!organization) return false;
+  if (!organization) {
+    return false;
+  }
   const isOwner =
     (organization.owner && organization.owner.toString() === userId) ||
-    (organization.owner && organization.owner._id && organization.owner._id.toString() === userId);
-  if (isOwner) return true;
+    (organization.owner &&
+      organization.owner._id &&
+      organization.owner._id.toString() === userId);
+  if (isOwner) {
+    return true;
+  }
 
   return organization.members.some((m) => {
     const mUserId = m.userId?._id?.toString() || m.userId?.toString();
-    const mEmail = (m.email || (m.userId && typeof m.userId === "object" && m.userId.email)) || "";
+    const mEmail =
+      m.email ||
+      (m.userId && typeof m.userId === "object" && m.userId.email) ||
+      "";
     const isThisUser =
-      (mUserId && (mUserId === userId || (typeof userId === "string" && mUserId === userId))) ||
+      (mUserId &&
+        (mUserId === userId ||
+          (typeof userId === "string" && mUserId === userId))) ||
       (userEmail && mEmail && mEmail.toLowerCase() === userEmail.toLowerCase());
     return isThisUser && (m.role === "admin" || m.role === "owner");
   });
@@ -485,7 +521,8 @@ export const getMembers = asyncHandler(async (req, res) => {
   }
 
   const formattedMembers = organization.members.map((m) => {
-    const u = typeof m.userId === "object" && m.userId !== null ? m.userId : null;
+    const u =
+      typeof m.userId === "object" && m.userId !== null ? m.userId : null;
     return {
       _id: m._id,
       userId: u,
@@ -520,7 +557,11 @@ export const inviteMember = asyncHandler(async (req, res) => {
     throw ApiError.notFound("Organization not found");
   }
 
-  const isAdminOrOwner = checkUserIsAdminOrOwner(organization, userId, userEmail);
+  const isAdminOrOwner = checkUserIsAdminOrOwner(
+    organization,
+    userId,
+    userEmail,
+  );
 
   if (!isAdminOrOwner) {
     throw ApiError.forbidden(
@@ -529,11 +570,15 @@ export const inviteMember = asyncHandler(async (req, res) => {
   }
 
   const cleanEmail = email.trim().toLowerCase();
-  const inviterId = req.user?.id || (mongoose.Types.ObjectId.isValid(userId) ? userId : undefined);
+  const inviterId =
+    req.user?.id ||
+    (mongoose.Types.ObjectId.isValid(userId) ? userId : undefined);
 
   // Prevent inviting self
   if (userEmail && userEmail === cleanEmail) {
-    throw ApiError.conflict("You cannot invite yourself to your own organization");
+    throw ApiError.conflict(
+      "You cannot invite yourself to your own organization",
+    );
   }
 
   // Check if registered locally
@@ -541,7 +586,10 @@ export const inviteMember = asyncHandler(async (req, res) => {
 
   // Check if already a member or pending invite
   const existingMember = organization.members.find((m) => {
-    const mEmail = (m.email || (m.userId && typeof m.userId === "object" && m.userId.email)) || "";
+    const mEmail =
+      m.email ||
+      (m.userId && typeof m.userId === "object" && m.userId.email) ||
+      "";
     return mEmail.toLowerCase() === cleanEmail;
   });
 
@@ -578,7 +626,8 @@ export const inviteMember = asyncHandler(async (req, res) => {
   );
 
   const formattedMembers = updatedOrg.members.map((m) => {
-    const u = typeof m.userId === "object" && m.userId !== null ? m.userId : null;
+    const u =
+      typeof m.userId === "object" && m.userId !== null ? m.userId : null;
     return {
       _id: m._id,
       userId: u,
@@ -616,7 +665,11 @@ export const removeMember = asyncHandler(async (req, res) => {
     throw ApiError.notFound("Organization not found");
   }
 
-  const isAdminOrOwner = checkUserIsAdminOrOwner(organization, userId, userEmail);
+  const isAdminOrOwner = checkUserIsAdminOrOwner(
+    organization,
+    userId,
+    userEmail,
+  );
 
   if (!isAdminOrOwner) {
     throw ApiError.forbidden(
@@ -628,7 +681,9 @@ export const removeMember = asyncHandler(async (req, res) => {
   if (
     organization.owner &&
     (organization.owner.toString() === memberId ||
-      (req.user?.id && organization.owner.toString() === req.user.id && memberId === req.user.id))
+      (req.user?.id &&
+        organization.owner.toString() === req.user.id &&
+        memberId === req.user.id))
   ) {
     throw ApiError.forbidden("Cannot remove the organization owner");
   }
@@ -661,7 +716,11 @@ export const updateMemberRole = asyncHandler(async (req, res) => {
     throw ApiError.notFound("Organization not found");
   }
 
-  const isAdminOrOwner = checkUserIsAdminOrOwner(organization, userId, userEmail);
+  const isAdminOrOwner = checkUserIsAdminOrOwner(
+    organization,
+    userId,
+    userEmail,
+  );
 
   if (!isAdminOrOwner) {
     throw ApiError.forbidden(
@@ -680,7 +739,9 @@ export const updateMemberRole = asyncHandler(async (req, res) => {
   }
 
   if (member.role === "owner") {
-    throw ApiError.forbidden("Cannot change the role of the organization owner");
+    throw ApiError.forbidden(
+      "Cannot change the role of the organization owner",
+    );
   }
 
   member.role = role;
@@ -721,17 +782,27 @@ export const createProject = asyncHandler(async (req, res) => {
 
   let userObj = null;
   if (userId && mongoose.Types.ObjectId.isValid(userId)) {
-    userObj = await User.findById(userId).lean().catch(() => null);
+    userObj = await User.findById(userId)
+      .lean()
+      .catch(() => null);
   }
   if (!userObj && req.user?.email) {
-    userObj = await User.findOne({ email: req.user.email.toLowerCase() }).lean().catch(() => null);
+    userObj = await User.findOne({ email: req.user.email.toLowerCase() })
+      .lean()
+      .catch(() => null);
   }
   if (!userObj && req.user?.sub) {
-    userObj = await User.findOne({ cognitoSub: req.user.sub }).lean().catch(() => null);
+    userObj = await User.findOne({ cognitoSub: req.user.sub })
+      .lean()
+      .catch(() => null);
   }
 
   const creatorEmail = userObj?.email || req.user?.email || "user@lexora.ai";
-  const creatorName = userObj ? `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() : (req.user?.firstName ? `${req.user.firstName} ${req.user.lastName || ''}`.trim() : "Real User");
+  const creatorName = userObj
+    ? `${userObj.firstName || ""} ${userObj.lastName || ""}`.trim()
+    : req.user?.firstName
+      ? `${req.user.firstName} ${req.user.lastName || ""}`.trim()
+      : "Real User";
 
   const project = await Project.create({
     name,
@@ -759,7 +830,12 @@ export const getProjects = asyncHandler(async (req, res) => {
   const userEmail = req.user?.email ? req.user.email.toLowerCase() : null;
   const { orgId } = req.params;
 
-  if (!orgId || orgId === "undefined" || orgId === "null" || !mongoose.Types.ObjectId.isValid(orgId)) {
+  if (
+    !orgId ||
+    orgId === "undefined" ||
+    orgId === "null" ||
+    !mongoose.Types.ObjectId.isValid(orgId)
+  ) {
     return ApiResponse.ok(res, "Projects retrieved successfully", []);
   }
 
@@ -781,9 +857,17 @@ export const getProjects = asyncHandler(async (req, res) => {
     .lean();
 
   const normalizedProjects = projects.map((p) => {
-    const creatorObj = typeof p.createdBy === "object" && p.createdBy !== null ? p.createdBy : null;
-    const creatorName = p.creatorName || (creatorObj ? `${creatorObj.firstName || ''} ${creatorObj.lastName || ''}`.trim() : "Lexora User");
-    const creatorEmail = p.creatorEmail || creatorObj?.email || "user@lexora.ai";
+    const creatorObj =
+      typeof p.createdBy === "object" && p.createdBy !== null
+        ? p.createdBy
+        : null;
+    const creatorName =
+      p.creatorName ||
+      (creatorObj
+        ? `${creatorObj.firstName || ""} ${creatorObj.lastName || ""}`.trim()
+        : "Lexora User");
+    const creatorEmail =
+      p.creatorEmail || creatorObj?.email || "user@lexora.ai";
     return {
       ...p,
       creatorName,
@@ -791,7 +875,11 @@ export const getProjects = asyncHandler(async (req, res) => {
     };
   });
 
-  return ApiResponse.ok(res, "Projects retrieved successfully", normalizedProjects);
+  return ApiResponse.ok(
+    res,
+    "Projects retrieved successfully",
+    normalizedProjects,
+  );
 });
 
 /**
@@ -824,10 +912,18 @@ export const updateProject = asyncHandler(async (req, res) => {
     throw ApiError.notFound("Project not found");
   }
 
-  if (name) project.name = name;
-  if (description !== undefined) project.description = description;
-  if (status) project.status = status;
-  if (color) project.color = color;
+  if (name) {
+    project.name = name;
+  }
+  if (description !== undefined) {
+    project.description = description;
+  }
+  if (status) {
+    project.status = status;
+  }
+  if (color) {
+    project.color = color;
+  }
 
   await project.save();
 
@@ -838,7 +934,6 @@ export const updateProject = asyncHandler(async (req, res) => {
 
 export const deleteProject = asyncHandler(async (req, res) => {
   const userId = req.user?.id || req.user?.sub;
-  const userEmail = req.user?.email ? req.user.email.toLowerCase() : null;
   const { orgId, projectId } = req.params;
 
   const organization = await Organization.findById(orgId);
@@ -848,7 +943,9 @@ export const deleteProject = asyncHandler(async (req, res) => {
 
   const isOwner =
     (organization.owner && organization.owner.toString() === userId) ||
-    (req.user?.id && organization.owner && organization.owner.toString() === req.user.id);
+    (req.user?.id &&
+      organization.owner &&
+      organization.owner.toString() === req.user.id);
 
   const project = await Project.findOne({
     _id: projectId,

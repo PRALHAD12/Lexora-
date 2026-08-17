@@ -10,7 +10,9 @@ export const generalLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
   max: config.rateLimit.maxRequests,
   keyGenerator: (req) => {
-    if (req.user?.id) return `user_${req.user.id}`;
+    if (req.user?.id) {
+      return `user_${req.user.id}`;
+    }
     if (req.headers.authorization) {
       return `auth_${req.headers.authorization.slice(-32)}`;
     }
@@ -33,7 +35,9 @@ export const authLimiter = rateLimit({
   max: config.rateLimit.auth.maxRequests,
   keyGenerator: (req) => {
     const email = req.body?.email?.trim().toLowerCase();
-    if (email) return `auth_email_${email}`;
+    if (email) {
+      return `auth_email_${email}`;
+    }
     return req.ip || "unknown_ip";
   },
   message: {

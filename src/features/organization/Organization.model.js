@@ -130,7 +130,9 @@ organizationSchema.statics.findByUser = function (userId, userEmail) {
   ];
   if (userEmail) {
     conditions.push({
-      members: { $elemMatch: { email: userEmail.toLowerCase(), status: "active" } },
+      members: {
+        $elemMatch: { email: userEmail.toLowerCase(), status: "active" },
+      },
     });
   }
   return this.find({
