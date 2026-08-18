@@ -27,13 +27,16 @@ services:
     container_name: lexora-api
     ports:
       - "5000:5000"
+    env_file:
+      - .env
     environment:
       - NODE_ENV=development
       - PORT=5000
-      - MONGODB_URI=mongodb://mongo:27017/lexora
+      - MONGODB_URI=${MONGODB_URI:-mongodb://mongo:27017/lexora}
       - AWS_REGION=${AWS_REGION:-us-east-1}
       - COGNITO_USER_POOL_ID=${COGNITO_USER_POOL_ID:-us-east-1_XXXXXXXXX}
       - COGNITO_APP_CLIENT_ID=${COGNITO_APP_CLIENT_ID:-xxxxxxxxxxxxxxxxxxxxxxxxxx}
+      - COGNITO_APP_CLIENT_SECRET=${COGNITO_APP_CLIENT_SECRET:-}
       - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
       - LOG_LEVEL=debug
     depends_on:

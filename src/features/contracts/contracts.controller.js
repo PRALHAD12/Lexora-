@@ -59,6 +59,32 @@ const getUserOrgRole = async (organizationId, userId, userEmail) => {
 };
 
 /**
+ * Helper: Send contract text to Python RAG service for indexing.
+ * Called after upload, create, or update — runs in background (non-blocking).
+ */
+const indexContractInRAG = async (contractId, text, title = "") => {
+  if (!text || !text.trim()) return;
+  const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || "http://localhost:8000";
+  try {
+    await fetch(`${RAG_SERVICE_URL}/api/rag/index`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contract_id: contractId.toString(),
+        text: text.trim(),
+        title: title || "",
+      }),
+    });
+    logger.info(`Contract ${contractId} indexed in RAG service`);
+  } catch (err) {
+    // Non-blocking — log warning but don't fail the request
+    logger.warn(`RAG indexing failed for contract ${contractId}: ${err.message}`);
+  }
+};
+
+
+
+/**
  * POST /api/v1/contracts/create
  * Create a new contract draft in the editor
  */
@@ -140,6 +166,11 @@ export const createContractDraft = asyncHandler(async (req, res) => {
 
   // Invalidate Redis history cache
   await cacheDel(`contracts:history:${userId}`);
+
+  // Index in RAG service if content is available (non-blocking)
+  if (content) {
+    indexContractInRAG(contract._id, content, contract.title);
+  }
 
   logger.info(
     `Contract draft created: "${contract.title}" (ID: ${contract._id}) by ${userName} (${userEmail})`,
@@ -246,6 +277,11 @@ export const updateContract = asyncHandler(async (req, res) => {
   // Update Redis cache
   await cacheSet(`contract:${contract._id}`, contract, 3600);
   await cacheDel(`contracts:history:${contract.userId}`);
+
+  // Re-index in RAG service if content changed (non-blocking)
+  if (content !== undefined && contract.content) {
+    indexContractInRAG(contract._id, contract.content, contract.title);
+  }
 
   logger.info(
     `Contract updated: "${contract.title}" (v${contract.version}) [Project: ${contract.projectId}] by user ${contract.userId}`,
@@ -439,6 +475,9 @@ export const uploadAndParseContract = asyncHandler(async (req, res) => {
   await cacheSet(`contract:${contract._id}`, contract, 3600);
   await cacheDel(`contracts:history:${userId}`);
 
+  // Index contract in RAG service (non-blocking background call)
+  indexContractInRAG(contract._id, extractedText, contract.title);
+
   logger.info(
     `Contract ${originalname} uploaded and parsed for user ${userId}`,
   );
@@ -481,6 +520,65 @@ export const getAuditHistory = asyncHandler(async (req, res) => {
   return ApiResponse.ok(res, "Audit history retrieved successfully", contracts);
 });
 
+
+
+
+
+
+
+
+
+
+
+/**
+ * POST /api/v1/contracts/:id/ask
+ * Ask a question about a contract using RAG (Python microservice)
+ */
+export const askContractQuestion = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { question } = req.body;
+
+  if (!question || !question.trim()) {
+    throw ApiError.badRequest("Question cannot be empty");
+  }
+
+  if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+    throw ApiError.notFound("Contract not found");
+  }
+
+  // Verify contract exists
+  const contract = await Contract.findById(id).lean();
+  if (!contract) {
+    throw ApiError.notFound("Contract not found");
+  }
+
+  // Call Python RAG microservice
+  const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || "http://localhost:8000";
+
+  const ragResponse = await fetch(`${RAG_SERVICE_URL}/api/rag/ask`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      contract_id: id,
+      question: question.trim(),
+    }),
+  });
+
+  if (!ragResponse.ok) {
+    throw ApiError.internal("RAG service failed to answer the question");
+  }
+
+  const ragData = await ragResponse.json();
+
+  logger.info(`RAG question answered for contract ${id}: "${question}"`);
+
+  return ApiResponse.ok(res, "Question answered successfully", {
+    question: question.trim(),
+    answer: ragData.answer,
+    sources: ragData.sources,
+  });
+});
+
 export default {
   createContractDraft,
   updateContract,
@@ -489,4 +587,5 @@ export default {
   deleteContract,
   uploadAndParseContract,
   getAuditHistory,
+  askContractQuestion,
 };

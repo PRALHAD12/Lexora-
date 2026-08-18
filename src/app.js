@@ -15,6 +15,7 @@ import authRoutes from "./features/auth/auth.routes.js";
 import userRoutes from "./features/user/user.routes.js";
 import contractsRoutes from "./features/contracts/contracts.routes.js";
 import organizationRoutes from "./features/organization/organization.routes.js";
+import aiRoutes from "./features/ai/ai.routes.js";
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/users`, userRoutes);
 app.use(`${API_PREFIX}/contracts`, contractsRoutes);
 app.use(`${API_PREFIX}/organizations`, organizationRoutes);
+app.use(`${API_PREFIX}/ai`, aiRoutes);
 
 // ─── Root Route ───────────────────────────────────────────────────
 app.get("/", (_req, res) => {

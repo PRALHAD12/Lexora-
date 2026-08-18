@@ -22,7 +22,7 @@ jest.unstable_mockModule("../../src/features/user/user.model.js", () => ({
 jest.unstable_mockModule("../../src/config/aws.js", () => ({
   cognitoClient: {},
   accessTokenVerifier: { verify: mockVerify },
-  idTokenVerifier: { verify: jest.fn() },
+  idTokenVerifier: { verify: mockVerify },
 }));
 
 // Import after mocks

@@ -8,6 +8,7 @@ import {
   deleteContract,
   uploadAndParseContract,
   getAuditHistory,
+  askContractQuestion,
 } from "./contracts.controller.js";
 import { authenticate } from "../../middleware/authenticate.js";
 
@@ -38,6 +39,9 @@ router.post("/upload", upload.single("contract"), uploadAndParseContract);
 
 // GET /api/v1/contracts/:id
 router.get("/:id", getContractById);
+
+// POST /api/v1/contracts/:id/ask  <- RAG: Ask a question about a contract
+router.post("/:id/ask", askContractQuestion);
 
 // PUT /api/v1/contracts/:id
 router.put("/:id", updateContract);
