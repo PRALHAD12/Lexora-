@@ -579,6 +579,117 @@ export const askContractQuestion = asyncHandler(async (req, res) => {
   });
 });
 
+
+/**
+ * POST /api/v1/contracts/:id/ask-stream
+ * Real-time SSE streaming Q&A for a contract
+ */
+export const askContractQuestionStream = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { question } = req.body;
+
+  if (!question || !question.trim()) {
+    throw ApiError.badRequest("Question is required");
+  }
+
+  const contract = await Contract.findById(id);
+  if (!contract || contract.isDeleted) {
+    throw ApiError.notFound("Contract not found");
+  }
+
+  // Set SSE response headers
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+
+  const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || "http://localhost:8000";
+
+  try {
+    const ragResponse = await fetch(`${RAG_SERVICE_URL}/api/rag/stream`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contract_id: id,
+        question: question.trim(),
+      }),
+    });
+
+    if (!ragResponse.ok || !ragResponse.body) {
+      res.write(`data: ${JSON.stringify({ type: "error", error: "Failed to connect to RAG stream" })}\n\n`);
+      return res.end();
+    }
+
+    const reader = ragResponse.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const textChunk = decoder.decode(value, { stream: true });
+      res.write(textChunk);
+      if (typeof res.flush === "function") res.flush();
+    }
+
+    res.end();
+  } catch (err) {
+    logger.error(`SSE stream error for contract ${id}:`, err);
+    res.write(`data: ${JSON.stringify({ type: "error", error: err.message })}\n\n`);
+    res.end();
+  }
+});
+
+/**
+ * POST /api/v1/contracts/reindex-all
+ * Triggers bulk re-indexing of all existing database contracts into ChromaDB
+ */
+export const reindexAllContracts = asyncHandler(async (req, res) => {
+  const contracts = await Contract.find({ isDeleted: { $ne: true } }).lean();
+  let indexedCount = 0;
+  let totalChunks = 0;
+
+  for (const contract of contracts) {
+    const docText =
+      (contract.content && contract.content.trim()) ||
+      (contract.extractedText && contract.extractedText.trim()) ||
+      "";
+
+    if (!docText) continue;
+
+    const title = contract.title || contract.fileName || "Untitled Agreement";
+    const RAG_SERVICE_URL = process.env.RAG_SERVICE_URL || "http://localhost:8000";
+
+    try {
+      const response = await fetch(`${RAG_SERVICE_URL}/api/rag/index`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contract_id: contract._id.toString(),
+          title,
+          user_id: contract.userId || "system",
+          text: docText,
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        totalChunks += data?.data?.chunks_indexed || 0;
+        indexedCount++;
+      }
+    } catch (err) {
+      logger.warn(`Failed to re-index contract ${contract._id}: ${err.message}`);
+    }
+  }
+
+  return ApiResponse.ok(res, "Bulk re-indexing completed", {
+    totalContracts: contracts.length,
+    indexedCount,
+    totalChunks,
+  });
+});
+
 export default {
   createContractDraft,
   updateContract,
@@ -588,4 +699,6 @@ export default {
   uploadAndParseContract,
   getAuditHistory,
   askContractQuestion,
+  askContractQuestionStream,
+  reindexAllContracts,
 };

@@ -11,7 +11,8 @@
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",
     "test:coverage": "NODE_OPTIONS='--experimental-vm-modules' jest --coverage --forceExit",
     "lint": "eslint src/ tests/",
-    "lint:fix": "eslint src/ tests/ --fix"
+    "lint:fix": "eslint src/ tests/ --fix",
+    "reindex": "node src/scripts/reindexAll.js"
   },
   "keywords": [
     "lexora",

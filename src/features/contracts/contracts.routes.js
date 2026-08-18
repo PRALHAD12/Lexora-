@@ -9,6 +9,8 @@ import {
   uploadAndParseContract,
   getAuditHistory,
   askContractQuestion,
+  askContractQuestionStream,
+  reindexAllContracts,
 } from "./contracts.controller.js";
 import { authenticate } from "../../middleware/authenticate.js";
 
@@ -37,14 +39,21 @@ router.get("/history", getAuditHistory);
 // POST /api/v1/contracts/upload
 router.post("/upload", upload.single("contract"), uploadAndParseContract);
 
+// POST /api/v1/contracts/reindex-all  <- Bulk re-index all contracts to RAG
+router.post("/reindex-all", reindexAllContracts);
+
 // GET /api/v1/contracts/:id
 router.get("/:id", getContractById);
 
 // POST /api/v1/contracts/:id/ask  <- RAG: Ask a question about a contract
 router.post("/:id/ask", askContractQuestion);
 
+// POST /api/v1/contracts/:id/ask-stream  <- RAG: Real-time SSE token stream
+router.post("/:id/ask-stream", askContractQuestionStream);
+
 // PUT /api/v1/contracts/:id
 router.put("/:id", updateContract);
+router.patch("/:id", updateContract);
 
 // DELETE /api/v1/contracts/:id
 router.delete("/:id", deleteContract);

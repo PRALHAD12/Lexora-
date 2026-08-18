@@ -39,14 +39,40 @@ services:
       - COGNITO_APP_CLIENT_SECRET=${COGNITO_APP_CLIENT_SECRET:-}
       - CORS_ORIGINS=http://localhost:3000,http://localhost:5173
       - LOG_LEVEL=debug
+      - RAG_SERVICE_URL=http://rag:8000
     depends_on:
       mongo:
         condition: service_healthy
+      rag:
+        condition: service_started
     restart: unless-stopped
     networks:
       - lexora-network
 
-  # 3. MongoDB Database Service
+  # 3. Python RAG Microservice (Ollama + ChromaDB)
+  rag:
+    build:
+      context: ../lexora-ai
+      dockerfile: Dockerfile
+    container_name: lexora-rag
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_EMBED_MODEL=nomic-embed-text
+      - OLLAMA_CHAT_MODEL=lexora-origin:v1
+      - CHROMA_DB_PATH=/app/chroma_db
+      - NODE_BACKEND_URL=http://api:5000
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ../lexora-ai/chroma_db:/app/chroma_db
+    restart: unless-stopped
+    networks:
+      - lexora-network
+
+  # 4. MongoDB Database Service
   mongo:
     image: mongo:7.0
     container_name: lexora-mongodb
@@ -70,4 +96,6 @@ networks:
 
 volumes:
   mongodb_data:
+    driver: local
+  chroma_data:
     driver: local
